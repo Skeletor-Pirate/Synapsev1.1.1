@@ -13,18 +13,97 @@ import {
   Download,
   Plus,
   ChevronRight,
-  Calculator
+  Calculator,
+  X,
+  ArrowLeft,
+  ArrowRight,
+  IndianRupee
 } from 'lucide-react';
 import { db, OperationType, handleFirestoreError } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { AnimatePresence } from 'motion/react';
 
 export default function TaxPilot({ user }: { user: any }) {
   const [taxEvents, setTaxEvents] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  
+  // ITR Filing State
+  const [itrData, setItrData] = useState({
+    regime: 'old',
+    income: {
+      salary: 0,
+      houseProperty: 0,
+      otherSources: 0
+    },
+    deductions: {
+      section80C: 0,
+      section80D: 0,
+      section24b: 0,
+      section80G: 0
+    }
+  });
 
   const handleClearTaxSync = () => {
     setIsSyncing(true);
     setTimeout(() => setIsSyncing(false), 2000);
+  };
+
+  const calculateTax = () => {
+    const totalIncome = itrData.income.salary + itrData.income.houseProperty + itrData.income.otherSources;
+    let taxableIncome = totalIncome;
+
+    if (itrData.regime === 'old') {
+      const totalDeductions = 
+        Math.min(itrData.deductions.section80C, 150000) + 
+        Math.min(itrData.deductions.section80D, 25000) + 
+        Math.min(itrData.deductions.section24b, 200000) + 
+        itrData.deductions.section80G;
+      taxableIncome = Math.max(0, totalIncome - totalDeductions - 50000); // Standard deduction 50k
+    } else {
+      taxableIncome = Math.max(0, totalIncome - 75000); // Standard deduction 75k for new regime in recent budget
+    }
+
+    // Simplified tax calculation for demo
+    let tax = 0;
+    if (itrData.regime === 'new') {
+      if (taxableIncome <= 300000) tax = 0;
+      else if (taxableIncome <= 700000) tax = (taxableIncome - 300000) * 0.05;
+      else if (taxableIncome <= 1000000) tax = 20000 + (taxableIncome - 700000) * 0.10;
+      else if (taxableIncome <= 1200000) tax = 50000 + (taxableIncome - 1000000) * 0.15;
+      else if (taxableIncome <= 1500000) tax = 80000 + (taxableIncome - 1200000) * 0.20;
+      else tax = 140000 + (taxableIncome - 1500000) * 0.30;
+    } else {
+      if (taxableIncome <= 250000) tax = 0;
+      else if (taxableIncome <= 500000) tax = (taxableIncome - 250000) * 0.05;
+      else if (taxableIncome <= 1000000) tax = 12500 + (taxableIncome - 500000) * 0.20;
+      else tax = 112500 + (taxableIncome - 1000000) * 0.30;
+    }
+
+    return { taxableIncome, tax };
+  };
+
+  const handleFileITR = async () => {
+    const { taxableIncome, tax } = calculateTax();
+    try {
+      await addDoc(collection(db, 'tax_filings'), {
+        userId: user.uid,
+        orgId: user.orgId,
+        type: 'ITR',
+        assessmentYear: '2026-27',
+        regime: itrData.regime,
+        totalIncome: itrData.income.salary + itrData.income.houseProperty + itrData.income.otherSources,
+        taxableIncome,
+        taxAmount: tax,
+        status: 'Filed',
+        timestamp: serverTimestamp()
+      });
+      setIsWizardOpen(false);
+      alert('ITR Filed Successfully!');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'tax_filings');
+    }
   };
 
   const deadlines = [
@@ -69,12 +148,263 @@ export default function TaxPilot({ user }: { user: any }) {
             <Calculator size={16} />
             {isSyncing ? 'Syncing ITR Data...' : 'Sync ITR Data'}
           </button>
-          <button onClick={() => alert('ITR Filing Wizard started')} className="px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-zinc-200 flex items-center gap-2">
+          <button onClick={() => {
+            setIsWizardOpen(true);
+            setWizardStep(1);
+          }} className="px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-zinc-200 flex items-center gap-2">
             <Plus size={16} />
             File ITR (AY 2026-27)
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isWizardOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-[32px] overflow-hidden shadow-2xl"
+            >
+              {/* Wizard Header */}
+              <div className="p-8 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/20">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tighter">ITR Filing Wizard</h3>
+                  <p className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Assessment Year 2026-27</p>
+                </div>
+                <button onClick={() => setIsWizardOpen(false)} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="h-1 bg-zinc-900">
+                <motion.div 
+                  className="h-full bg-amber-500"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${(wizardStep / 4) * 100}%` }}
+                />
+              </div>
+
+              {/* Wizard Content */}
+              <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {wizardStep === 1 && (
+                  <div className="space-y-6">
+                    <h4 className="text-lg font-bold">Select Tax Regime</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => setItrData({...itrData, regime: 'old'})}
+                        className={`p-6 rounded-2xl border-2 text-left transition-all ${itrData.regime === 'old' ? 'border-amber-500 bg-amber-500/5' : 'border-zinc-800 hover:border-zinc-700'}`}
+                      >
+                        <p className="font-bold mb-1">Old Regime</p>
+                        <p className="text-xs text-zinc-500">Allows deductions like 80C, 80D, HRA, etc. Higher tax slabs.</p>
+                      </button>
+                      <button 
+                        onClick={() => setItrData({...itrData, regime: 'new'})}
+                        className={`p-6 rounded-2xl border-2 text-left transition-all ${itrData.regime === 'new' ? 'border-amber-500 bg-amber-500/5' : 'border-zinc-800 hover:border-zinc-700'}`}
+                      >
+                        <p className="font-bold mb-1">New Regime (Default)</p>
+                        <p className="text-xs text-zinc-500">Lower tax slabs but no major deductions allowed.</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-bold">Income Details</h4>
+                      <button 
+                        onClick={() => {
+                          setItrData({
+                            ...itrData,
+                            income: { salary: 1200000, houseProperty: 50000, otherSources: 25000 }
+                          });
+                        }}
+                        className="text-[10px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 uppercase tracking-widest"
+                      >
+                        <Download size={12} />
+                        Quick Fill with Form 16
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Annual Salary Income</label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                          <input 
+                            type="number" 
+                            value={itrData.income.salary}
+                            onChange={(e) => setItrData({...itrData, income: {...itrData.income, salary: Number(e.target.value)}})}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 pl-12 focus:border-amber-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Income from House Property</label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                          <input 
+                            type="number" 
+                            value={itrData.income.houseProperty}
+                            onChange={(e) => setItrData({...itrData, income: {...itrData.income, houseProperty: Number(e.target.value)}})}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 pl-12 focus:border-amber-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Income from Other Sources</label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                          <input 
+                            type="number" 
+                            value={itrData.income.otherSources}
+                            onChange={(e) => setItrData({...itrData, income: {...itrData.income, otherSources: Number(e.target.value)}})}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 pl-12 focus:border-amber-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 3 && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-bold">Deductions & Exemptions</h4>
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => {
+                            setItrData({
+                              ...itrData,
+                              deductions: { section80C: 150000, section80D: 25000, section24b: 0, section80G: 5000 }
+                            });
+                          }}
+                          className="text-[10px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 uppercase tracking-widest"
+                        >
+                          <Download size={12} />
+                          Auto-Fill Proofs
+                        </button>
+                        {itrData.regime === 'new' && (
+                          <span className="text-[10px] font-bold bg-amber-500/10 text-amber-500 px-2 py-1 rounded-full uppercase tracking-widest">Limited in New Regime</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Section 80C (Max ₹1.5L)</label>
+                        <input 
+                          type="number" 
+                          disabled={itrData.regime === 'new'}
+                          value={itrData.deductions.section80C}
+                          onChange={(e) => setItrData({...itrData, deductions: {...itrData.deductions, section80C: Number(e.target.value)}})}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 focus:border-amber-500 outline-none transition-all disabled:opacity-30"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Section 80D (Health Insurance)</label>
+                        <input 
+                          type="number" 
+                          disabled={itrData.regime === 'new'}
+                          value={itrData.deductions.section80D}
+                          onChange={(e) => setItrData({...itrData, deductions: {...itrData.deductions, section80D: Number(e.target.value)}})}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 focus:border-amber-500 outline-none transition-all disabled:opacity-30"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Section 24(b) (Home Loan Interest)</label>
+                        <input 
+                          type="number" 
+                          disabled={itrData.regime === 'new'}
+                          value={itrData.deductions.section24b}
+                          onChange={(e) => setItrData({...itrData, deductions: {...itrData.deductions, section24b: Number(e.target.value)}})}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 focus:border-amber-500 outline-none transition-all disabled:opacity-30"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 block">Section 80G (Donations)</label>
+                        <input 
+                          type="number" 
+                          disabled={itrData.regime === 'new'}
+                          value={itrData.deductions.section80G}
+                          onChange={(e) => setItrData({...itrData, deductions: {...itrData.deductions, section80G: Number(e.target.value)}})}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 focus:border-amber-500 outline-none transition-all disabled:opacity-30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 4 && (
+                  <div className="space-y-6">
+                    <h4 className="text-lg font-bold">Tax Summary</h4>
+                    <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-6 space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-500">Gross Total Income</span>
+                        <span className="font-bold">₹{(itrData.income.salary + itrData.income.houseProperty + itrData.income.otherSources).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-500">Total Deductions</span>
+                        <span className="text-emerald-500 font-bold">
+                          -₹{(itrData.regime === 'old' ? (
+                            Math.min(itrData.deductions.section80C, 150000) + 
+                            Math.min(itrData.deductions.section80D, 25000) + 
+                            Math.min(itrData.deductions.section24b, 200000) + 
+                            itrData.deductions.section80G + 50000
+                          ) : 75000).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="h-px bg-zinc-800" />
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Taxable Income</span>
+                        <span>₹{calculateTax().taxableIncome.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-2xl font-black text-amber-500 pt-4">
+                        <span>Estimated Tax</span>
+                        <span>₹{calculateTax().tax.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20 flex gap-3">
+                      <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                      <p className="text-xs text-zinc-400">This is an estimated calculation based on the data provided. Final tax may vary based on cess and surcharges.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Wizard Footer */}
+              <div className="p-8 border-t border-zinc-900 flex justify-between bg-zinc-900/20">
+                <button 
+                  onClick={() => setWizardStep(prev => Math.max(1, prev - 1))}
+                  disabled={wizardStep === 1}
+                  className="px-6 py-3 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 disabled:opacity-30"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+                {wizardStep < 4 ? (
+                  <button 
+                    onClick={() => setWizardStep(prev => Math.min(4, prev + 1))}
+                    className="px-6 py-3 bg-white text-black rounded-xl text-sm font-bold hover:bg-zinc-200 transition-all flex items-center gap-2"
+                  >
+                    Next
+                    <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleFileITR}
+                    className="px-8 py-3 bg-amber-500 text-black rounded-xl text-sm font-black hover:bg-amber-400 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                  >
+                    <CheckCircle2 size={18} />
+                    Submit & File ITR
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
