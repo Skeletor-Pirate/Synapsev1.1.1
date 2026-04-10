@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration, ThinkingLevel, GenerateContentResponse } from "@google/genai";
-import { getAIClient, AIProvider } from "@/lib/ai-client";
+import { getAIClient, AIProvider, generateContent } from "@/lib/ai-client";
 import { 
   get_ledger_balance, 
   query_tax_code, 
