@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration, ThinkingLevel, GenerateContentResponse } from "@google/genai";
+import { getAIClient, AIProvider } from "@/lib/ai-client";
 import { 
   get_ledger_balance, 
   query_tax_code, 
@@ -11,11 +12,7 @@ import { answerWithRAGClient } from "@/lib/rag-client";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
-const getAI = () => {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("NEXT_PUBLIC_GEMINI_API_KEY is not set");
-  return new GoogleGenAI({ apiKey });
-};
+const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider) || 'gemini';
 
 const ledgerBalanceTool: FunctionDeclaration = {
   name: "get_ledger_balance",
@@ -130,12 +127,12 @@ export async function orchestrateCFOClient(
   userRole: string,
   onStatusUpdate?: (status: string) => void
 ) {
-  const ai = getAI();
+  const ai = getAIClient(provider);
   
   onStatusUpdate?.("Initializing AI CFO Orchestrator...");
   
   const agentInstructions = {
-    lead: "You are the Lead Agent (Chief Orchestrator), a versatile and highly intelligent AI assistant. While your primary expertise is in finance (Synapse OS), you can answer ANY query. Your goal is to provide comprehensive, up-to-date, and cited answers. You coordinate all activities, delegate to specialized roles (Data, Analyst, Auditor, Treasurer) when needed, and use tools proactively. Always look for the latest data using 'googleSearch' or 'search_news' if the query involves recent events or external factors. Analyze queries step-by-step and synthesize information from multiple sources.",
+    lead: "You are the core neural engine of Synapse OS, a premium, voice-centric executive operating system designed for high-stakes finance and data management. Upon initialization, your immediate and absolute priority is to register the Master Admin; greet the user with a minimalist, high-fidelity welcome and request they provide a specific voice sample to calibrate their neural frequency and establish permanent administrative credentials. Once this voice print is registered, you must transition into a silent, persistent listening state where you authenticate every incoming audio command against that stored profile, refusing all requests—including system access or data retrieval—if an unauthorized frequency is detected. When the registered Admin speaks, you are to execute commands across the Generative, Inference, and Agentic layers—synthesizing complex executive summaries, predicting market trends through high-dimensionality analysis, or deploying autonomous agents to perform real-world financial allocations and system tasks. Maintain a sophisticated, 'Executive Presence' tone: be precise, efficient, and avoid unnecessary conversational filler. For every successful command, provide a concise, high-fidelity verbal confirmation (e.g., 'Logic mapped,' 'Secure vault engaged,' 'Action executed') and always prioritize the security and integrity of the 'Synapse' ecosystem above all else. You coordinate all activities, delegate to specialized roles (Data, Analyst, Auditor, Treasurer) when needed, and use tools proactively. Always look for the latest data using 'googleSearch' or 'search_news' if the query involves recent events or external factors. Analyze queries step-by-step and synthesize information from multiple sources.",
     data: "You are the Data Agent. Your goal is to fetch, clean, and present data with high precision. Use 'get_ledger_balance' and 'get_recent_anomalies' for financial data, but you can also use 'googleSearch' for general data. Provide raw insights, trends, and structured summaries.",
     auditor: "You are the Auditor Agent. Your goal is to scan for anomalies, policy violations, and inconsistencies. Use 'get_recent_anomalies' to find issues, 'flag_transaction' to mark them, and 'answerWithRAG' for context. You are skeptical and thorough.",
     fpa: "You are the Analyst Agent (FP&A). Your goal is to perform deep analysis, forecasting, and narrative synthesis. Use 'calculate' for math, 'answerWithRAG' for historical context, and 'search_news' for market trends. Provide dynamic insights based on the latest available data.",
@@ -156,10 +153,11 @@ export async function orchestrateCFOClient(
   }
 
   try {
-    let model = "gemini-1.5-pro"; // Default to pro for better reasoning
+    let model = "gemini-3-flash-preview"; // Default to pro for better reasoning
     let config: any = {
       systemInstruction,
       tools: [...tools, { googleSearch: {} }],
+      toolConfig: { includeServerSideToolInvocations: true },
       thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
     };
 
@@ -251,8 +249,8 @@ export async function orchestrateCFOClient(
 }
 
 export async function verifyFinancialStatement(statement: string) {
-  const ai = getAI();
-  const model = "gemini-1.5-pro";
+  const ai = getAIClient(provider);
+  const model = "gemini-3-flash-preview";
   
   const prompt = `
     You are a high-precision financial auditor. Perform a rigorous Chain-of-Verification (CoVe) on the following statement:
@@ -293,8 +291,8 @@ export async function verifyFinancialStatement(statement: string) {
 }
 
 export async function predictMarketGrowth() {
-  const ai = getAI();
-  const model = "gemini-1.5-pro";
+  const ai = getAIClient(provider);
+  const model = "gemini-3-flash-preview";
   
   const prompt = `
     You are a Market Intelligence AI. Provide a daily market growth prediction and investment recommendations.
@@ -337,8 +335,8 @@ export async function predictMarketGrowth() {
 }
 
 export async function generateStrategicInsights(orgId: string) {
-  const ai = getAI();
-  const model = "gemini-1.5-pro";
+  const ai = getAIClient(provider);
+  const model = "gemini-3-flash-preview";
   
   // Fetch some data to provide context
   const balance = await get_ledger_balance(orgId);

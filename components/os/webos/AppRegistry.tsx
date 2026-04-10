@@ -20,7 +20,9 @@ import {
   Search,
   Music,
   Sparkles,
-  Database
+  Database,
+  Music2,
+  Mic
 } from 'lucide-react';
 
 import Dashboard from '@/components/apps/Dashboard';
@@ -42,6 +44,7 @@ import Calendar from '@/components/apps/Calendar';
 import TaskManager from '@/components/apps/TaskManager';
 import GoogleApp from '@/components/apps/GoogleApp';
 import NotesApp from '@/components/apps/NotesApp';
+import SynapseMusic from '@/components/apps/SynapseMusic';
 
 export type AppId = 
   | 'dashboard' 
@@ -62,7 +65,9 @@ export type AppId =
   | 'calendar'
   | 'taskmanager'
   | 'google'
-  | 'notes';
+  | 'notes'
+  | 'music'
+  | 'voice';
 
 export interface AppDefinition {
   id: AppId;
@@ -91,6 +96,8 @@ export const AppRegistry: AppDefinition[] = [
   { id: 'taskmanager', name: 'Task Manager', icon: Activity, color: 'bg-zinc-700', component: TaskManager },
   { id: 'google', name: 'Google', icon: Search, color: 'bg-white', component: GoogleApp },
   { id: 'notes', name: 'Notes', icon: FileText, color: 'bg-amber-600', component: NotesApp },
+  { id: 'music', name: 'Music', icon: Music, color: 'bg-indigo-600', component: SynapseMusic },
+  { id: 'voice', name: 'Voice', icon: Mic, color: 'bg-blue-500', component: () => null }, // Placeholder for desktop icon
   { id: 'aibrain', name: 'Velyra', icon: Sparkles, color: 'bg-indigo-400', component: AIBrain },
   { id: 'settings', name: 'Settings', icon: Settings, color: 'bg-zinc-500', component: SettingsApp },
 ];

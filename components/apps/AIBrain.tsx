@@ -21,7 +21,7 @@ export default function AIBrain({ user }: { user: any }) {
   const [query, setQuery] = useState('');
   const [agentType, setAgentType] = useState<AgentType>('lead');
   const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', content: "Hello! I'm your Synapse AI CFO. I can help you analyze spend, predict cash flow, or generate financial reports. What's on your mind today?" }
+    { role: 'assistant', content: "Neural frequency uncalibrated. Please provide a voice sample to establish Master Admin credentials." }
   ]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -68,8 +68,8 @@ export default function AIBrain({ user }: { user: any }) {
     <div className="h-full flex flex-col gap-8">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter">AI Brain</h2>
-          <p className="text-zinc-500">Autonomous FP&A, narrative reporting, and strategic insights.</p>
+          <h2 className="text-4xl font-black tracking-tighter">Neural Engine</h2>
+          <p className="text-zinc-500">Core executive intelligence and autonomous orchestration.</p>
         </div>
       </div>
 
@@ -82,8 +82,8 @@ export default function AIBrain({ user }: { user: any }) {
                 <Bot size={24} />
               </div>
               <div>
-                <h3 className="font-bold">CFO Assistant</h3>
-                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Online • AI-Powered</p>
+                <h3 className="font-bold">Synapse Core</h3>
+                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Online • Persistent Listening</p>
               </div>
             </div>
             
@@ -170,7 +170,7 @@ export default function AIBrain({ user }: { user: any }) {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSend()}
-                placeholder="Ask about your finances, generate a report, or simulate a scenario..."
+                placeholder="Awaiting Master Admin voice input..."
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 pr-16 outline-none focus:border-white transition-colors text-sm"
               />
               <button 

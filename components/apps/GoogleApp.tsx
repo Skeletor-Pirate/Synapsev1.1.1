@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-export default function GoogleApp() {
+export default function GoogleApp({ params }: { params?: any }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +30,16 @@ export default function GoogleApp() {
     };
     checkKey();
   }, []);
+
+  useEffect(() => {
+    if (params?.query) {
+      setQuery(params.query);
+      // Trigger search after a short delay to ensure key is checked
+      setTimeout(() => {
+        handleSearch();
+      }, 500);
+    }
+  }, [params]);
 
   const handleSelectKey = async () => {
     if (window.aistudio) {
@@ -61,7 +71,7 @@ export default function GoogleApp() {
       
       if (searchType === 'web') {
         const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
+          model: "gemini-3-flash-preview",
           contents: `Search for: ${query}. Provide a list of relevant websites with titles, URLs, and brief descriptions.`,
           config: {
             systemInstruction: "Provide a concise response, limited to 2000 tokens.",

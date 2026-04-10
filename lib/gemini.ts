@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
 export const models = {
   flash: "gemini-3-flash-preview",
-  pro: "gemini-3.1-pro-preview",
+  pro: "gemini-3-flash-preview",
   lite: "gemini-3.1-flash-lite-preview",
   image: "gemini-3.1-flash-image-preview",
 };

@@ -82,7 +82,7 @@ Please analyze the data and provide your insights in Markdown format.
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3-flash-preview',
         contents: fullPrompt,
       });
 

@@ -1,18 +1,14 @@
-import { GoogleGenAI } from "@google/genai";
+import { getAIClient, AIProvider } from "@/lib/ai-client";
 import { searchFinancialDataPinecone } from "@/app/actions/rag"; // Still a server action for data retrieval
 import { maskPII, unmaskPII } from "@/lib/pii";
 import { logAuditTrail } from "@/lib/audit"; // Corrected import
 
-const getAI = () => {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("NEXT_PUBLIC_GEMINI_API_KEY is not set");
-  return new GoogleGenAI({ apiKey });
-};
+const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider) || 'gemini';
 
 export async function rerankDocumentsClient(queryText: string, documents: any[]) {
   if (documents.length === 0) return [];
   
-  const ai = getAI();
+  const ai = getAIClient(provider);
   const prompt = `
     You are a financial data reranker. Given a user query and a list of retrieved financial documents, score each document's relevance to the query from 0 to 10.
     Return ONLY a JSON array of objects with 'id' and 'score'.
@@ -25,7 +21,7 @@ export async function rerankDocumentsClient(queryText: string, documents: any[])
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{ parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
@@ -49,7 +45,7 @@ export async function rerankDocumentsClient(queryText: string, documents: any[])
 
 export async function answerWithRAGClient(queryText: string, orgId: string, userId: string, userRole: string) {
   try {
-    const ai = getAI();
+    const ai = getAIClient(provider);
     
     // 1. Retrieve top chunks (Server Action)
     let retrievedDocs = await searchFinancialDataPinecone(queryText, orgId, 10);
@@ -99,7 +95,7 @@ export async function answerWithRAGClient(queryText: string, orgId: string, user
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-3-flash-preview",
       contents: [{ parts: [{ text: prompt }] }],
       config: {
         systemInstruction: "You are a world-class CFO and research analyst. Your responses are dynamic, data-driven, and cite both internal and external sources. You avoid repetition and static templates.",

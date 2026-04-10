@@ -2,6 +2,7 @@
   "name": "Synapse v1",
   "description": "AI-native operating system for finance teams, featuring SpendSense, PredictiveAR, and AI FP\u0026A Studio for automated variance analysis and forecasting.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

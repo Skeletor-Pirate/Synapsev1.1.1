@@ -14,7 +14,8 @@ import {
   LayoutDashboard,
   Folder,
   FileText,
-  File
+  File,
+  Mic
 } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -26,6 +27,7 @@ import { AppRegistry, AppId, AppDefinition } from './AppRegistry';
 import AppWindow from './AppWindow';
 import Taskbar from './Taskbar';
 import AppDrawer from './AppDrawer';
+import VoiceAssistant from './VoiceAssistant';
 
 export default function WebOSShell() {
   const fileSystem = useFileSystem();
@@ -41,6 +43,8 @@ export default function WebOSShell() {
   const [zOrder, setZOrder] = useState<AppId[]>([]);
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
+  const [appParams, setAppParams] = useState<Record<AppId, any>>({} as any);
   const [searchQuery, setSearchQuery] = useState('');
   const [time, setTime] = useState(new Date());
 
@@ -51,7 +55,14 @@ export default function WebOSShell() {
     }
   };
 
-  const handleOpenApp = useCallback((appId: AppId) => {
+  const handleOpenApp = useCallback((appId: AppId, params?: any) => {
+    if (appId === 'voice' as any) {
+      setIsVoiceAssistantOpen(true);
+      return;
+    }
+    if (params) {
+      setAppParams(prev => ({ ...prev, [appId]: params }));
+    }
     setOpenApps(prev => {
       if (!prev.includes(appId)) {
         return [...prev, appId];
@@ -131,7 +142,7 @@ export default function WebOSShell() {
   useEffect(() => {
     const handleGlobalOpenApp = (e: any) => {
       if (e.detail && e.detail.appId) {
-        handleOpenApp(e.detail.appId);
+        handleOpenApp(e.detail.appId, e.detail);
       }
     };
     window.addEventListener('open-app', handleGlobalOpenApp);
@@ -308,6 +319,13 @@ export default function WebOSShell() {
           
           <div className="flex items-center gap-4 text-zinc-500">
             <button 
+              onClick={() => setIsVoiceAssistantOpen(true)}
+              className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors group"
+            >
+              <Mic size={14} className="group-hover:text-blue-300 transition-colors" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Voice</span>
+            </button>
+            <button 
               onClick={() => setIsCommandPaletteOpen(true)}
               className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
             >
@@ -382,6 +400,7 @@ export default function WebOSShell() {
                   onCloseApp={handleCloseApp}
                   apps={AppRegistry}
                   fileSystem={fileSystem}
+                  params={appParams[appId]}
                 />
               </AppWindow>
             );
@@ -415,6 +434,13 @@ export default function WebOSShell() {
         onLock={() => setIsLocked(true)}
         user={user}
       />
+
+      {/* Voice Assistant */}
+      <AnimatePresence>
+        {isVoiceAssistantOpen && (
+          <VoiceAssistant user={user} onClose={() => setIsVoiceAssistantOpen(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Command Palette */}
       <AnimatePresence>
