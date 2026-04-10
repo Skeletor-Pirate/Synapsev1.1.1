@@ -1,4 +1,4 @@
-import { getAIClient, AIProvider } from "@/lib/ai-client";
+import { generateContent, AIProvider } from "@/lib/ai-client";
 import { searchFinancialDataPinecone } from "@/app/actions/rag"; // Still a server action for data retrieval
 import { maskPII, unmaskPII } from "@/lib/pii";
 import { logAuditTrail } from "@/lib/audit"; // Corrected import
@@ -8,7 +8,6 @@ const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider)
 export async function rerankDocumentsClient(queryText: string, documents: any[]) {
   if (documents.length === 0) return [];
   
-  const ai = getAIClient(provider);
   const prompt = `
     You are a financial data reranker. Given a user query and a list of retrieved financial documents, score each document's relevance to the query from 0 to 10.
     Return ONLY a JSON array of objects with 'id' and 'score'.
@@ -20,12 +19,8 @@ export async function rerankDocumentsClient(queryText: string, documents: any[])
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-      }
+    const response = await generateContent(provider, prompt, {
+      responseMimeType: "application/json",
     });
     
     const scores = JSON.parse(response.text || "[]");
@@ -45,8 +40,6 @@ export async function rerankDocumentsClient(queryText: string, documents: any[])
 
 export async function answerWithRAGClient(queryText: string, orgId: string, userId: string, userRole: string) {
   try {
-    const ai = getAIClient(provider);
-    
     // 1. Retrieve top chunks (Server Action)
     let retrievedDocs = await searchFinancialDataPinecone(queryText, orgId, 10);
     
@@ -94,13 +87,9 @@ export async function answerWithRAGClient(queryText: string, orgId: string, user
       6. If there are anomalies or interesting trends in the data, highlight them.
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction: "You are a world-class CFO and research analyst. Your responses are dynamic, data-driven, and cite both internal and external sources. You avoid repetition and static templates.",
-        tools: [{ googleSearch: {} }]
-      }
+    const response = await generateContent(provider, prompt, {
+      systemInstruction: "You are a world-class CFO and research analyst. Your responses are dynamic, data-driven, and cite both internal and external sources. You avoid repetition and static templates.",
+      tools: [{ googleSearch: {} }]
     });
     
     const rawAnswer = response.text || "No response generated.";
@@ -109,10 +98,11 @@ export async function answerWithRAGClient(queryText: string, orgId: string, user
     // 4. Audit-Trail Logging (Server Action)
     await logAuditTrail(userId, orgId, queryText, topDocs, finalAnswer);
 
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      title: chunk.web?.title || chunk.web?.uri,
-      url: chunk.web?.uri
-    })) || [];
+    // Note: Grounding metadata is Gemini specific. This will need adjustment for other providers.
+    const sources = []; // response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+    //   title: chunk.web?.title || chunk.web?.uri,
+    //   url: chunk.web?.uri
+    // })) || [];
 
     return {
       text: finalAnswer,

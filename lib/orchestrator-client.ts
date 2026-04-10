@@ -249,9 +249,6 @@ export async function orchestrateCFOClient(
 }
 
 export async function verifyFinancialStatement(statement: string) {
-  const ai = getAIClient(provider);
-  const model = "gemini-3-flash-preview";
-  
   const prompt = `
     You are a high-precision financial auditor. Perform a rigorous Chain-of-Verification (CoVe) on the following statement:
     "${statement}"
@@ -274,13 +271,9 @@ export async function verifyFinancialStatement(statement: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
-      }
+    const response = await generateContent(provider, prompt, {
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
     });
     
     return JSON.parse(response.text || "{}");
@@ -291,9 +284,6 @@ export async function verifyFinancialStatement(statement: string) {
 }
 
 export async function predictMarketGrowth() {
-  const ai = getAIClient(provider);
-  const model = "gemini-3-flash-preview";
-  
   const prompt = `
     You are a Market Intelligence AI. Provide a daily market growth prediction and investment recommendations.
     Analyze trends in Bonds, Rare Earth Metals, Tech Companies, and Global Shares.
@@ -312,13 +302,9 @@ export async function predictMarketGrowth() {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
-      }
+    const response = await generateContent(provider, prompt, {
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
     });
     
     return JSON.parse(response.text || "{}");
@@ -335,9 +321,6 @@ export async function predictMarketGrowth() {
 }
 
 export async function generateStrategicInsights(orgId: string) {
-  const ai = getAIClient(provider);
-  const model = "gemini-3-flash-preview";
-  
   // Fetch some data to provide context
   const balance = await get_ledger_balance(orgId);
   const anomalies = await get_recent_anomalies(orgId);
@@ -358,12 +341,8 @@ export async function generateStrategicInsights(orgId: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-      }
+    const response = await generateContent(provider, prompt, {
+      responseMimeType: "application/json",
     });
     
     return JSON.parse(response.text || "[]");

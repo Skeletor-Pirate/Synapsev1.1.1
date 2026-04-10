@@ -24,3 +24,48 @@ export const getAIClient = (provider: AIProvider = 'gemini') => {
       return new GoogleGenAI({ apiKey });
   }
 };
+
+export const createChat = async (provider: AIProvider, config: any, history: any) => {
+  const client = getAIClient(provider);
+  if (provider === 'gemini') {
+    return (client as any).chats.create({
+      model: "gemini-3-flash-preview",
+      config,
+      history
+    });
+  } else {
+    // OpenAI/Groq - simplified chat implementation
+    return {
+      history: history,
+      sendMessage: async (message: any) => {
+        const messages = [...history, { role: 'user', content: message.message }];
+        const response = await (client as any).chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          ...config
+        });
+        return { text: response.choices[0].message.content };
+      },
+      getHistory: async () => history
+    };
+  }
+};
+
+export const generateContent = async (provider: AIProvider, prompt: string, config: any) => {
+  const client = getAIClient(provider);
+  if (provider === 'gemini') {
+    return await (client as any).models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ parts: [{ text: prompt }] }],
+      config
+    });
+  } else {
+    // OpenAI/Groq
+    const response = await (client as any).chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: 'user', content: prompt }],
+      ...config
+    });
+    return { text: response.choices[0].message.content };
+  }
+};
