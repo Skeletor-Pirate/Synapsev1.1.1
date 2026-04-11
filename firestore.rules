@@ -242,5 +242,26 @@ service cloud.firestore {
     match /threads/{threadId} {
       allow read, write: if isAuthenticated() && (threadId == request.auth.uid || isAdmin());
     }
+
+    // Analytics & Logging
+    match /user_logins/{logId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+    }
+
+    match /app_usage/{usageId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+    }
+
+    match /realtime_actions/{actionId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+    }
+
+    match /chat_logs/{logId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
   }
 }

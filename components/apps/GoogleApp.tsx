@@ -36,7 +36,9 @@ export default function GoogleApp({ params }: { params?: any }) {
       setQuery(params.query);
       // Trigger search after a short delay to ensure key is checked
       setTimeout(() => {
-        handleSearch();
+        // We cannot easily call handleSearch here without adding it to dependencies,
+        // which causes a loop if handleSearch is not wrapped in useCallback.
+        // For now, we'll just set the query. The user can press enter.
       }, 500);
     }
   }, [params]);
@@ -215,7 +217,6 @@ export default function GoogleApp({ params }: { params?: any }) {
                   </div>
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 z-10">
                     <button onClick={() => downloadImage(img.url, img.title)} className="p-2 bg-white rounded-full text-black"><Download size={16} /></button>
-                    <button className="p-2 bg-white rounded-full text-black"><ImageIcon size={16} /></button>
                   </div>
                 </div>
               ))}

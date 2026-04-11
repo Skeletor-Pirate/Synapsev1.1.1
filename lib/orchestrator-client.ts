@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration, ThinkingLevel, GenerateContentResponse } from "@google/genai";
-import { getAIClient, AIProvider, generateContent } from "@/lib/ai-client";
+import { getAIClient, AIProvider } from "@/lib/ai-client";
 import { 
   get_ledger_balance, 
   query_tax_code, 
@@ -10,7 +10,7 @@ import {
 import { search_news } from "@/app/actions/tools-server";
 import { answerWithRAGClient } from "@/lib/rag-client";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider) || 'gemini';
 
@@ -147,9 +147,9 @@ export async function orchestrateCFOClient(
   const threadDoc = await getDoc(threadRef);
   let history = threadDoc.exists() ? threadDoc.data().history : [];
   
-  // Prune history
-  if (history.length > 10) {
-    history = history.slice(-10);
+  // Prune history (increased to 50 for better context)
+  if (history.length > 50) {
+    history = history.slice(-50);
   }
 
   try {
@@ -229,6 +229,21 @@ export async function orchestrateCFOClient(
     onStatusUpdate?.("Finalizing response...");
     // Save state
     await setDoc(threadRef, { history: await chat.getHistory() }, { merge: true });
+
+    // Log chat to chat_logs collection
+    try {
+      await addDoc(collection(db, 'chat_logs'), {
+        threadId,
+        userId,
+        orgId,
+        query,
+        response: response.text || "No response generated.",
+        agentType,
+        timestamp: serverTimestamp()
+      });
+    } catch (logError) {
+      console.error("Failed to log chat:", logError);
+    }
 
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
       title: chunk.web?.title || chunk.web?.uri,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wifi, 
@@ -22,6 +22,7 @@ import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from
 import { collection, onSnapshot, query, orderBy, limit, doc, getDoc, setDoc, where } from 'firebase/firestore';
 import { seedInitialData } from '@/lib/seed';
 import { useFileSystem } from '@/hooks/useFileSystem';
+import { logUserLogin, logAppUsage, syncUserAction } from '@/lib/analytics';
 
 import { AppRegistry, AppId, AppDefinition } from './AppRegistry';
 import AppWindow from './AppWindow';
@@ -48,6 +49,8 @@ export default function WebOSShell() {
   const [searchQuery, setSearchQuery] = useState('');
   const [time, setTime] = useState(new Date());
 
+  const appStartTimes = useRef<Record<string, number>>({});
+
   const handleGesture = (gesture: string) => {
     if (gesture === 'pinch') {
       // Toggle start menu on pinch
@@ -65,6 +68,10 @@ export default function WebOSShell() {
     }
     setOpenApps(prev => {
       if (!prev.includes(appId)) {
+        if (!appStartTimes.current[appId]) {
+          appStartTimes.current[appId] = Date.now();
+          if (user?.uid) syncUserAction(user.uid, 'app_opened', { appId });
+        }
         return [...prev, appId];
       }
       return prev;
@@ -74,7 +81,7 @@ export default function WebOSShell() {
     setMinimizedApps(prev => prev.filter(id => id !== appId));
     setIsStartOpen(false);
     setIsCommandPaletteOpen(false);
-  }, []);
+  }, [user?.uid]);
 
   const handleCloseApp = useCallback((appId: AppId) => {
     setOpenApps(prev => prev.filter(id => id !== appId));
@@ -84,7 +91,15 @@ export default function WebOSShell() {
     if (activeApp === appId) {
       setActiveApp(null);
     }
-  }, [activeApp]);
+    
+    const startTime = appStartTimes.current[appId];
+    if (startTime && user?.uid) {
+      const durationMs = Date.now() - startTime;
+      logAppUsage(user.uid, appId, durationMs);
+      syncUserAction(user.uid, 'app_closed', { appId, durationMs });
+      delete appStartTimes.current[appId];
+    }
+  }, [activeApp, user?.uid]);
 
   const handleMinimizeApp = useCallback((appId: AppId) => {
     setMinimizedApps(prev => prev.includes(appId) ? prev : [...prev, appId]);
@@ -129,6 +144,8 @@ export default function WebOSShell() {
           await seedInitialData(newUserProfile.orgId);
         }
         setFirebaseUser(fbUser);
+        logUserLogin(fbUser.uid, fbUser.email);
+        syncUserAction(fbUser.uid, 'user_login', { email: fbUser.email });
       } else {
         setFirebaseUser(null);
         setUser(null);

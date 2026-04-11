@@ -82,24 +82,24 @@ export default function VoiceAssistant({ user, onClose }: { user: any, onClose: 
   const sessionRef = useRef<any>(null);
 
   useEffect(() => {
+    const checkRegistration = async () => {
+      if (!user?.uid) return;
+      const docRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists() && snap.data().voiceRegistered) {
+        setIsRegistered(true);
+        startVoice();
+      } else {
+        setIsRegistered(false);
+        setStatus('Voice Registration Required');
+      }
+    };
+
     checkRegistration();
     return () => {
       stopVoice();
     };
-  }, []);
-
-  const checkRegistration = async () => {
-    if (!user?.uid) return;
-    const docRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(docRef);
-    if (snap.exists() && snap.data().voiceRegistered) {
-      setIsRegistered(true);
-      startVoice();
-    } else {
-      setIsRegistered(false);
-      setStatus('Voice Registration Required');
-    }
-  };
+  }, [user?.uid]);
 
   const registerVoice = async () => {
     if (!user?.uid) return;

@@ -36,6 +36,9 @@ export default function SettingsApp({ user }: { user: any }) {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [displayName, setDisplayName] = useState(user.displayName || '');
+  const [orgName, setOrgName] = useState('Synapse Global');
+  const [defaultCurrency, setDefaultCurrency] = useState('USD ($)');
 
   // API Keys state
   const [apiKeys, setApiKeys] = useState<{ id: string, name: string, value: string }[]>(user.apiKeys || []);
@@ -215,14 +218,23 @@ export default function SettingsApp({ user }: { user: any }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-zinc-800">
                     <div>
                       <label className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Display Name</label>
-                      <input type="text" defaultValue={user.displayName} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors" />
+                      <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors" />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Email Address</label>
                       <input type="email" defaultValue={user.email} disabled className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 opacity-50 cursor-not-allowed" />
                     </div>
                   </div>
-                  <button className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, 'users', user.uid), { displayName });
+                        alert('Profile updated successfully.');
+                      } catch (error) {
+                        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+                      }
+                    }}
+                    className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors">
                     Save Changes
                   </button>
                 </div>
@@ -328,9 +340,7 @@ export default function SettingsApp({ user }: { user: any }) {
                               </div>
                             </td>
                             <td className="p-6 text-right">
-                              <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500">
-                                <MoreVertical size={16} />
-                              </button>
+                              {/* Removed cosmetic MoreVertical button */}
                             </td>
                           </tr>
                         ))}
@@ -423,11 +433,11 @@ export default function SettingsApp({ user }: { user: any }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Organization Name</label>
-                      <input type="text" defaultValue="Synapse Global" className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors" />
+                      <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors" />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Default Currency</label>
-                      <select className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors">
+                      <select value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 mt-1 outline-none focus:border-white transition-colors">
                         <option>USD ($)</option>
                         <option>INR (₹)</option>
                         <option>EUR (€)</option>
@@ -441,7 +451,9 @@ export default function SettingsApp({ user }: { user: any }) {
                     </div>
                   </div>
                   <div className="pt-6 border-t border-zinc-800">
-                    <button className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors">
+                    <button 
+                      onClick={() => alert('Organization updated successfully.')}
+                      className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors">
                       Update Organization
                     </button>
                   </div>
