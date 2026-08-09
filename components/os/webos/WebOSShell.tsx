@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Wifi, 
+import CFOGlance from '@/components/apps/dashboard/CFOGlance';
+import {
+  Wifi,
   Volume2, 
   Search as SearchIcon, 
   Command,
@@ -15,7 +16,12 @@ import {
   Folder,
   FileText,
   File,
-  Mic
+  Mic,
+  BatteryMedium,
+  Zap,
+  ChevronRight,
+  Sparkles,
+  Shield
 } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -29,6 +35,80 @@ import AppWindow from './AppWindow';
 import Taskbar from './Taskbar';
 import AppDrawer from './AppDrawer';
 import VoiceAssistant from './VoiceAssistant';
+
+/* ── Synapse Logo SVG ── */
+function SynapseLogo({ size = 40, animated = false }: { size?: number; animated?: boolean }) {
+  return (
+    <div className={`relative ${animated ? 'animate-float' : ''}`} style={{ width: size, height: size }}>
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        {/* Neural network nodes */}
+        <circle cx="20" cy="8" r="3" fill="url(#nodeGrad1)" className={animated ? 'animate-breathe' : ''} />
+        <circle cx="8" cy="26" r="3" fill="url(#nodeGrad2)" className={animated ? 'animate-breathe' : ''} style={{ animationDelay: '0.3s' }} />
+        <circle cx="32" cy="26" r="3" fill="url(#nodeGrad3)" className={animated ? 'animate-breathe' : ''} style={{ animationDelay: '0.6s' }} />
+        <circle cx="20" cy="32" r="2.5" fill="url(#nodeGrad4)" className={animated ? 'animate-breathe' : ''} style={{ animationDelay: '0.9s' }} />
+        <circle cx="14" cy="16" r="2" fill="url(#nodeGrad1)" opacity="0.6" />
+        <circle cx="26" cy="16" r="2" fill="url(#nodeGrad2)" opacity="0.6" />
+        {/* Connections */}
+        <line x1="20" y1="8" x2="8" y2="26" stroke="url(#lineGrad)" strokeWidth="1" opacity="0.4" />
+        <line x1="20" y1="8" x2="32" y2="26" stroke="url(#lineGrad)" strokeWidth="1" opacity="0.4" />
+        <line x1="8" y1="26" x2="32" y2="26" stroke="url(#lineGrad)" strokeWidth="1" opacity="0.3" />
+        <line x1="8" y1="26" x2="20" y2="32" stroke="url(#lineGrad)" strokeWidth="1" opacity="0.3" />
+        <line x1="32" y1="26" x2="20" y2="32" stroke="url(#lineGrad)" strokeWidth="1" opacity="0.3" />
+        <line x1="14" y1="16" x2="26" y2="16" stroke="url(#lineGrad)" strokeWidth="0.8" opacity="0.25" />
+        <defs>
+          <linearGradient id="nodeGrad1" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#3B82F6"/><stop offset="1" stopColor="#60A5FA"/></linearGradient>
+          <linearGradient id="nodeGrad2" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#8B5CF6"/><stop offset="1" stopColor="#A78BFA"/></linearGradient>
+          <linearGradient id="nodeGrad3" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#06B6D4"/><stop offset="1" stopColor="#22D3EE"/></linearGradient>
+          <linearGradient id="nodeGrad4" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#10B981"/><stop offset="1" stopColor="#34D399"/></linearGradient>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#3B82F6" stopOpacity="0.6"/><stop offset="1" stopColor="#8B5CF6" stopOpacity="0.6"/></linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+}
+
+/* ── Mesh Gradient Wallpaper (CSS only, no external images) ── */
+function DesktopWallpaper() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ background: 'var(--surface-0)' }}>
+      {/* Base gradient */}
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 40%, hsla(217, 60%, 12%, 1) 0%, transparent 70%)' }} />
+      {/* Floating orbs */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: 600, height: 600,
+          top: '-10%', right: '-5%',
+          background: 'radial-gradient(circle, hsla(217, 91%, 60%, 0.12) 0%, transparent 70%)',
+          animation: 'meshFloat1 30s ease-in-out infinite',
+          filter: 'blur(80px)',
+        }}
+      />
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: 500, height: 500,
+          bottom: '5%', left: '-5%',
+          background: 'radial-gradient(circle, hsla(265, 80%, 62%, 0.1) 0%, transparent 70%)',
+          animation: 'meshFloat2 35s ease-in-out infinite',
+          filter: 'blur(80px)',
+        }}
+      />
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: 350, height: 350,
+          top: '50%', left: '40%',
+          background: 'radial-gradient(circle, hsla(190, 90%, 50%, 0.06) 0%, transparent 70%)',
+          animation: 'meshFloat3 28s ease-in-out infinite',
+          filter: 'blur(60px)',
+        }}
+      />
+      {/* Noise grain overlay */}
+      <div className="noise-overlay absolute inset-0" />
+    </div>
+  );
+}
 
 export default function WebOSShell() {
   const fileSystem = useFileSystem();
@@ -53,7 +133,6 @@ export default function WebOSShell() {
 
   const handleGesture = (gesture: string) => {
     if (gesture === 'pinch') {
-      // Toggle start menu on pinch
       setIsStartOpen(prev => !prev);
     }
   };
@@ -124,12 +203,10 @@ export default function WebOSShell() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // Fetch or create user profile in Firestore
         const userDocRef = doc(db, 'users', fbUser.uid);
         const userDoc = await getDoc(userDocRef);
         
         if (!userDoc.exists()) {
-          // Create new user profile
           const newUserProfile = {
             uid: fbUser.uid,
             email: fbUser.email || 'no-email@example.com',
@@ -139,8 +216,6 @@ export default function WebOSShell() {
             createdAt: new Date().toISOString()
           };
           await setDoc(userDocRef, newUserProfile);
-          
-          // Seed initial data for new organization
           await seedInitialData(newUserProfile.orgId);
         }
         setFirebaseUser(fbUser);
@@ -210,6 +285,22 @@ export default function WebOSShell() {
     return () => clearInterval(timer);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setIsCommandPaletteOpen(false);
+        setIsStartOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -232,167 +323,241 @@ export default function WebOSShell() {
     }
   };
 
+  /* ═══ BOOT SCREEN ═══ */
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
-        <div className="w-24 h-24 relative">
-          <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
-          <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin" />
-        </div>
-        <h1 className="mt-8 text-2xl font-black tracking-tighter text-white animate-pulse">SYNAPSE OS</h1>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-black to-zinc-900/20" />
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center opacity-30 blur-sm scale-105" />
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 w-full max-w-md p-12 bg-black/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] rounded-[40px] text-center"
+      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden" style={{ background: 'var(--surface-0)' }}>
+        <DesktopWallpaper />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10 flex flex-col items-center"
         >
-          <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-2xl rotate-12">
-            <div className="grid grid-cols-2 gap-1 p-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-sm" />
-              <div className="w-4 h-4 bg-emerald-500 rounded-sm" />
-              <div className="w-4 h-4 bg-amber-500 rounded-sm" />
-              <div className="w-4 h-4 bg-rose-500 rounded-sm" />
+          <SynapseLogo size={64} animated />
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              SYNAPSE
+            </h1>
+            {/* Thin loading bar */}
+            <div className="w-48 h-[2px] rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-purple))' }}
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 2, ease: 'linear' }}
+              />
             </div>
+            <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>Initializing neural engine…</p>
           </div>
-          <h1 className="text-4xl font-black tracking-tighter text-white mb-2">Synapse OS</h1>
-          <p className="text-zinc-500 text-sm font-medium mb-12">The AI-Native CFO Operating System</p>
-          
-          <button 
-            onClick={handleSignIn}
-            className="w-full py-4 bg-white text-black rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-95"
-          >
-            <User size={20} />
-            Continue with Google
-          </button>
-          
-          <p className="mt-8 text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Secure Enterprise Access Only</p>
         </motion.div>
       </div>
     );
   }
 
+  /* ═══ LOGIN SCREEN ═══ */
+  if (!user) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative" style={{ background: 'var(--surface-0)' }}>
+        <DesktopWallpaper />
+
+        <motion.div 
+          initial={{ opacity: 0, y: 24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10 w-full max-w-sm"
+        >
+          <div className="glass-heavy rounded-3xl p-10 text-center relative overflow-hidden">
+            {/* Subtle top edge gradient */}
+            <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
+            
+            <div className="flex justify-center mb-6">
+              <SynapseLogo size={56} animated />
+            </div>
+
+            <h1 className="text-2xl font-semibold tracking-tight mb-1" style={{ color: 'var(--text-primary)' }}>
+              Synapse OS
+            </h1>
+            <p className="text-sm mb-10" style={{ color: 'var(--text-tertiary)' }}>
+              AI-Native CFO Operating System
+            </p>
+            
+            <button 
+              onClick={handleSignIn}
+              className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.97]"
+              style={{
+                background: 'var(--accent-primary)',
+                color: 'white',
+                boxShadow: '0 4px 16px var(--accent-primary-glow), 0 1px 2px rgba(0,0,0,0.3)',
+              }}
+              onMouseEnter={e => { (e.target as HTMLElement).style.filter = 'brightness(1.1)'; }}
+              onMouseLeave={e => { (e.target as HTMLElement).style.filter = 'brightness(1)'; }}
+            >
+              <Shield size={16} />
+              Continue with Google
+            </button>
+
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-success)' }} />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--text-ghost)' }}>
+                Secure Enterprise Access
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  /* ═══ LOCK SCREEN ═══ */
   if (isLocked) {
     return (
       <div 
-        className="h-screen w-screen bg-cover bg-center flex flex-col items-center justify-center relative cursor-pointer"
-        style={{ backgroundImage: `url('${user.backgroundUrl || 'https://picsum.photos/seed/os/1920/1080'}')` }}
+        className="h-screen w-screen flex flex-col items-center justify-center relative cursor-pointer overflow-hidden"
+        style={{ background: 'var(--surface-0)' }}
         onClick={() => setIsLocked(false)}
       >
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        <DesktopWallpaper />
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10 text-center"
         >
-          <h1 className="text-8xl font-black text-white tracking-tighter mb-4">
+          <h1 
+            className="text-8xl font-extralight tracking-tight mb-2"
+            style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-inter), Inter, sans-serif', fontVariantNumeric: 'tabular-nums' }}
+          >
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </h1>
-          <p className="text-2xl font-medium text-white/80">
+          <p className="text-lg font-medium" style={{ color: 'var(--text-secondary)' }}>
             {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-          <div className="mt-24 flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center">
-              <User size={32} className="text-white" />
+          <div className="mt-20 flex flex-col items-center gap-4">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-105"
+              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(20px)' }}
+            >
+              <User size={24} style={{ color: 'var(--text-secondary)' }} />
             </div>
-            <p className="text-xl font-bold text-white">{user.displayName}</p>
-            <p className="text-sm text-white/60">Click to unlock</p>
+            <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{user.displayName}</p>
+            <p className="text-xs" style={{ color: 'var(--text-ghost)' }}>Click anywhere to unlock</p>
           </div>
         </motion.div>
       </div>
     );
   }
 
+  const activeAppDef = activeApp ? AppRegistry.find(a => a.id === activeApp) : null;
+
+  /* ═══ MAIN DESKTOP ═══ */
   return (
-    <div className="h-screen w-screen bg-[#050505] text-white overflow-hidden relative font-sans select-none">
-      {/* Desktop Background */}
+    <div className="h-screen w-screen overflow-hidden relative select-none" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-inter), Inter, sans-serif' }}>
+      {/* Desktop Wallpaper */}
+      <DesktopWallpaper />
+
+      {/* ── Top Bar (Menu Bar) ── */}
       <div 
-        className="absolute inset-0 bg-cover bg-center opacity-50 pointer-events-none" 
-        style={{ backgroundImage: `url('${user.backgroundUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'}')` }}
-      />
-      
-      {/* Top Bar */}
-      <div className="h-12 flex items-center justify-between px-6 bg-black/40 backdrop-blur-2xl border-b border-white/10 relative z-[200] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="grid grid-cols-2 gap-0.5">
-              <div className="w-2 h-2 bg-blue-500 rounded-sm" />
-              <div className="w-2 h-2 bg-emerald-500 rounded-sm" />
-              <div className="w-2 h-2 bg-amber-500 rounded-sm" />
-              <div className="w-2 h-2 bg-rose-500 rounded-sm" />
+        className="h-11 flex items-center justify-between px-5 relative z-[200]"
+        style={{
+          background: 'rgba(8, 8, 16, 0.72)',
+          backdropFilter: 'blur(40px) saturate(1.4)',
+          borderBottom: '1px solid var(--glass-border)',
+        }}
+      >
+        {/* Left section */}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsStartOpen(prev => !prev)}
+            className="flex items-center gap-2 px-2 py-1 rounded-md transition-all duration-150 hover:bg-white/5 active:bg-white/10"
+          >
+            <SynapseLogo size={18} />
+            <span className="text-[11px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Synapse</span>
+          </button>
+
+          {/* Active window title */}
+          {activeAppDef && (
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+              {activeAppDef.name}
+            </span>
+          )}
+
+          <div style={{ width: 1, height: 14, background: 'var(--glass-border)' }} />
+
+          <button 
+            onClick={() => setIsVoiceAssistantOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all duration-150 hover:bg-white/5 group"
+          >
+            <Mic size={12} style={{ color: 'var(--accent-primary)' }} />
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>Voice</span>
+          </button>
+
+          <button 
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-md transition-all duration-150 hover:bg-white/5 group"
+          >
+            <SearchIcon size={12} style={{ color: 'var(--text-tertiary)' }} />
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>Search</span>
+            <div className="flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-3)' }}>
+              <Command size={9} style={{ color: 'var(--text-ghost)' }} />
+              <span className="text-[9px] font-semibold" style={{ color: 'var(--text-ghost)' }}>K</span>
             </div>
-            <span className="text-xs font-black tracking-tighter">SYNAPSE</span>
-          </div>
-          
-          <div className="h-4 w-px bg-white/10" />
-          
-          <div className="flex items-center gap-4 text-zinc-500">
-            <button 
-              onClick={() => setIsVoiceAssistantOpen(true)}
-              className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors group"
-            >
-              <Mic size={14} className="group-hover:text-blue-300 transition-colors" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Voice</span>
-            </button>
-            <button 
-              onClick={() => setIsCommandPaletteOpen(true)}
-              className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
-            >
-              <SearchIcon size={14} className="group-hover:text-white transition-colors" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Search</span>
-              <div className="flex items-center gap-1 ml-2 opacity-50">
-                <Command size={10} />
-                <span className="text-[10px]">K</span>
-              </div>
-            </button>
-          </div>
+          </button>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4 text-zinc-400">
-            <Wifi size={16} />
-            <Volume2 size={16} />
-            <Bell size={16} className="text-amber-500" />
+        {/* Right section */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Wifi size={13} style={{ color: 'var(--text-tertiary)' }} />
+            <Volume2 size={13} style={{ color: 'var(--text-tertiary)' }} />
+            <BatteryMedium size={15} style={{ color: 'var(--text-tertiary)' }} />
+            <div className="relative">
+              <Bell size={13} style={{ color: 'var(--text-tertiary)' }} />
+              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-warning)' }} />
+            </div>
           </div>
-          <div className="h-4 w-px bg-white/10" />
+          <div style={{ width: 1, height: 14, background: 'var(--glass-border)' }} />
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">
-              {time.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+            <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="text-[9px] font-medium" style={{ color: 'var(--text-ghost)' }}>
+              {time.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Workspace / Desktop */}
-      <main className="absolute inset-0 top-12 bottom-12 pointer-events-none">
+      {/* ── Desktop Workspace ── */}
+      <main className="absolute inset-0 top-11 bottom-14 pointer-events-none">
         {/* Desktop Icons */}
-        <div className="grid grid-flow-col grid-rows-6 gap-4 w-fit pointer-events-auto p-8">
-          {AppRegistry.filter(app => !app.hidden).map((app) => (
-            <button
+        <div className="grid grid-flow-col grid-rows-6 gap-1 w-fit pointer-events-auto p-6">
+          {AppRegistry.filter(app => !app.hidden).map((app, index) => (
+            <motion.button
               key={app.id}
               onDoubleClick={() => handleOpenApp(app.id)}
-              className="w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-2xl hover:bg-white/5 transition-all group"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="w-20 h-20 flex flex-col items-center justify-center gap-1.5 rounded-xl transition-all duration-200 group hover:bg-white/[0.04]"
             >
-              <div className={`w-12 h-12 rounded-2xl ${app.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                <app.icon size={24} className="text-white" />
+              <div 
+                className={`w-11 h-11 rounded-[13px] ${app.color} flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-lg`}
+              >
+                <app.icon size={20} className="text-white drop-shadow-sm" />
               </div>
-              <span className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors text-center shadow-black drop-shadow-md">
+              <span 
+                className="text-[10px] font-medium text-center leading-tight max-w-[72px] truncate transition-colors duration-200"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 {app.name}
               </span>
-            </button>
+            </motion.button>
           ))}
         </div>
 
-        {/* Windows Container */}
+        {/* App Windows */}
         <AnimatePresence>
           {openApps.map((appId) => {
             const app = AppRegistry.find(a => a.id === appId);
@@ -425,7 +590,7 @@ export default function WebOSShell() {
         </AnimatePresence>
       </main>
 
-      {/* Taskbar */}
+      {/* ── Taskbar ── */}
       <Taskbar 
         openApps={openApps}
         activeApp={activeApp}
@@ -442,7 +607,7 @@ export default function WebOSShell() {
         apps={AppRegistry.filter(app => !app.hidden)}
       />
 
-      {/* App Drawer / Start Menu */}
+      {/* ── App Drawer ── */}
       <AppDrawer 
         isOpen={isStartOpen}
         apps={AppRegistry.filter(app => !app.hidden)}
@@ -452,90 +617,116 @@ export default function WebOSShell() {
         user={user}
       />
 
-      {/* Voice Assistant */}
+      {/* ── Voice Assistant ── */}
       <AnimatePresence>
         {isVoiceAssistantOpen && (
           <VoiceAssistant user={user} onClose={() => setIsVoiceAssistantOpen(false)} />
         )}
       </AnimatePresence>
 
-      {/* Command Palette */}
+      {/* ═══ COMMAND PALETTE ═══ */}
       <AnimatePresence>
         {isCommandPaletteOpen && (
           <div className="fixed inset-0 z-[300] flex items-start justify-center pt-[15vh] px-4 pointer-events-none">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-black/60 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] overflow-hidden pointer-events-auto"
+              initial={{ opacity: 0, scale: 0.96, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-xl glass-heavy rounded-2xl overflow-hidden pointer-events-auto"
             >
-              <div className="p-6 border-b border-white/5 flex items-center gap-4">
-                <SearchIcon className="text-zinc-500" size={20} />
+              {/* Search input */}
+              <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                <SearchIcon size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                 <input 
                   type="text" 
-                  placeholder="Type a command or search apps..." 
-                  className="flex-1 bg-transparent border-none outline-none text-lg font-medium placeholder:text-zinc-600"
+                  placeholder="Search apps, files, commands…" 
+                  className="flex-1 bg-transparent border-none outline-none text-sm font-medium"
+                  style={{ color: 'var(--text-primary)' }}
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded text-[10px] font-bold text-zinc-500">
-                  ESC
+                <div className="flex items-center px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-3)' }}>
+                  <span className="text-[10px] font-semibold" style={{ color: 'var(--text-ghost)' }}>ESC</span>
                 </div>
               </div>
-              <div className="max-h-[400px] overflow-y-auto p-4 custom-scrollbar">
-                {AppRegistry.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase())).map(app => (
-                  <button
-                    key={app.id}
-                    onClick={() => handleOpenApp(app.id)}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors group"
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${app.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                      <app.icon size={20} className="text-white" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-white">{app.name}</p>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Application</p>
-                    </div>
-                  </button>
-                ))}
-                {searchQuery && fileSystem.files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase())).map((file: any) => (
-                  <button
-                    key={file.id}
-                    onClick={() => {
-                      if (file.type === 'note') {
-                        handleOpenApp('notes');
-                        setTimeout(() => {
-                          window.dispatchEvent(new CustomEvent('open-app', { detail: { appId: 'notes', fileId: file.id } }));
-                        }, 50);
-                      } else {
-                        handleOpenApp('explorer');
-                      }
-                      setIsCommandPaletteOpen(false);
-                    }}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shadow-lg group-hover:bg-white/10 transition-all">
-                      {file.type === 'folder' ? (
-                        <Folder size={20} className="text-blue-400" />
-                      ) : file.type === 'note' ? (
-                        <FileText size={20} className="text-amber-400" />
-                      ) : (
-                        <File size={20} className="text-zinc-400" />
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-white">{file.name}</p>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                        {file.type === 'folder' ? 'Folder' : file.type === 'note' ? 'Note' : 'File'} • {file.size}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+
+              {/* Results */}
+              <div className="max-h-[360px] overflow-y-auto py-2 custom-scrollbar">
+                {/* Apps section */}
+                <div className="px-3 py-1">
+                  <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-ghost)' }}>
+                    Applications
+                  </p>
+                  {AppRegistry.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase())).map((app, index) => (
+                    <motion.button
+                      key={app.id}
+                      onClick={() => handleOpenApp(app.id)}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.02, duration: 0.15 }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-100 group hover:bg-white/[0.04]"
+                    >
+                      <div className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center transition-transform duration-150 group-hover:scale-105`}>
+                        <app.icon size={16} className="text-white" />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{app.name}</p>
+                      </div>
+                      <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-ghost)' }} />
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Files section */}
+                {searchQuery && fileSystem.files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 && (
+                  <div className="px-3 py-1 mt-1" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                    <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-ghost)' }}>
+                      Files
+                    </p>
+                    {fileSystem.files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase())).map((file: any) => (
+                      <button
+                        key={file.id}
+                        onClick={() => {
+                          if (file.type === 'note') {
+                            handleOpenApp('notes');
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent('open-app', { detail: { appId: 'notes', fileId: file.id } }));
+                            }, 50);
+                          } else {
+                            handleOpenApp('explorer');
+                          }
+                          setIsCommandPaletteOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-100 group hover:bg-white/[0.04]"
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--surface-3)' }}>
+                          {file.type === 'folder' ? (
+                            <Folder size={16} style={{ color: 'var(--accent-primary)' }} />
+                          ) : file.type === 'note' ? (
+                            <FileText size={16} style={{ color: 'var(--accent-warning)' }} />
+                          ) : (
+                            <File size={16} style={{ color: 'var(--text-tertiary)' }} />
+                          )}
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{file.name}</p>
+                          <p className="text-[10px]" style={{ color: 'var(--text-ghost)' }}>
+                            {file.type === 'folder' ? 'Folder' : file.type === 'note' ? 'Note' : 'File'} · {file.size}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
+
+            {/* Backdrop */}
             <div 
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm -z-10 pointer-events-auto"
+              className="fixed inset-0 -z-10 pointer-events-auto"
+              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
               onClick={() => setIsCommandPaletteOpen(false)}
             />
           </div>

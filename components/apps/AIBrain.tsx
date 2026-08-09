@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
-  BrainCircuit, 
+import NeuralPulse from '@/components/apps/dashboard/NeuralPulse';
+import {
+  BrainCircuit,
   Sparkles, 
   Send, 
   FileText, 
@@ -147,15 +148,7 @@ export default function AIBrain({ user }: { user: any }) {
                 </div>
                 <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <motion.div 
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className="flex gap-1"
-                    >
-                      <div className="w-1 h-1 bg-zinc-400 rounded-full" />
-                      <div className="w-1 h-1 bg-zinc-400 rounded-full" />
-                      <div className="w-1 h-1 bg-zinc-400 rounded-full" />
-                    </motion.div>
+                    <NeuralPulse />
                     <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">{status}</span>
                   </div>
                 </div>

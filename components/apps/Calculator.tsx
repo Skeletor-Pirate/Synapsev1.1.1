@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PieChart, Calculator as CalcIcon } from 'lucide-react';
 
 export default function Calculator() {
   const [display, setDisplay] = useState('0');
@@ -35,72 +34,138 @@ export default function Calculator() {
     }
   };
 
+  const btnBase = "flex items-center justify-center text-sm font-semibold rounded-xl transition-all duration-100 active:translate-y-[1px] active:shadow-none select-none";
+  
+  const numBtn = `${btnBase} hover:bg-white/[0.06]`;
+  const opBtn = `${btnBase} hover:bg-white/[0.06]`;
+  
   return (
-    <div className="h-full bg-transparent text-white font-sans flex flex-col items-center justify-center p-8">
-      <div className="w-full max-w-xs bg-zinc-900/50 border border-white/10 rounded-3xl p-6 shadow-2xl">
-        <div className="text-right mb-6">
-          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest h-4">{equation}</p>
-          <h2 className="text-4xl font-black tracking-tighter truncate">{display}</h2>
+    <div className="h-full flex flex-col items-center justify-center p-6">
+      <div 
+        className="w-full max-w-[280px] rounded-2xl p-5"
+        style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
+      >
+        {/* Display */}
+        <div className="text-right mb-5 px-1">
+          <p className="text-[10px] font-semibold h-4 truncate" style={{ color: 'var(--text-ghost)' }}>
+            {equation}
+          </p>
+          <h2 
+            className="text-4xl font-bold tracking-tight truncate mt-1"
+            style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+          >
+            {display}
+          </h2>
         </div>
         
-        <div className="grid grid-cols-4 gap-2">
-          {['C', '/', '*', '-'].map((op, i) => (
+        {/* Buttons */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {/* Row 1: C / * - */}
+          {['C', '/', '*', '-'].map((op) => (
             <button 
-              key={i} 
+              key={op} 
               onClick={() => op === 'C' ? handleClear() : handleOperator(op)}
-              className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors text-emerald-500"
+              className={`${opBtn} w-full h-[52px]`}
+              style={{ 
+                background: 'var(--surface-3)',
+                color: 'var(--accent-primary)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              }}
             >
               {op}
             </button>
           ))}
-          {[7, 8, 9].map((val, i) => (
+
+          {/* Row 2: 7 8 9 + */}
+          {[7, 8, 9].map((val) => (
             <button 
-              key={i} 
+              key={val} 
               onClick={() => handleInput(val.toString())}
-              className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
+              className={`${numBtn} w-full h-[52px]`}
+              style={{ 
+                background: 'rgba(255,255,255,0.03)',
+                color: 'var(--text-primary)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              }}
             >
               {val}
             </button>
           ))}
           <button 
             onClick={() => handleOperator('+')}
-            className="w-14 h-[120px] bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors text-emerald-500 row-span-2"
+            className={`${opBtn} w-full h-[108px] row-span-2`}
+            style={{ 
+              background: 'var(--surface-3)',
+              color: 'var(--accent-primary)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+            }}
           >
             +
           </button>
-          {[4, 5, 6].map((val, i) => (
+
+          {/* Row 3: 4 5 6 */}
+          {[4, 5, 6].map((val) => (
             <button 
-              key={i} 
+              key={val} 
               onClick={() => handleInput(val.toString())}
-              className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
+              className={`${numBtn} w-full h-[52px]`}
+              style={{ 
+                background: 'rgba(255,255,255,0.03)',
+                color: 'var(--text-primary)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              }}
             >
               {val}
             </button>
           ))}
-          {[1, 2, 3].map((val, i) => (
+
+          {/* Row 4: 1 2 3 = */}
+          {[1, 2, 3].map((val) => (
             <button 
-              key={i} 
+              key={val} 
               onClick={() => handleInput(val.toString())}
-              className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
+              className={`${numBtn} w-full h-[52px]`}
+              style={{ 
+                background: 'rgba(255,255,255,0.03)',
+                color: 'var(--text-primary)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              }}
             >
               {val}
             </button>
           ))}
           <button 
             onClick={handleEqual}
-            className="w-14 h-[120px] rounded-2xl flex items-center justify-center text-sm font-bold transition-colors bg-emerald-500 text-black hover:bg-emerald-400 row-span-2"
+            className={`${btnBase} w-full h-[108px] row-span-2`}
+            style={{ 
+              background: 'var(--accent-primary)',
+              color: 'white',
+              boxShadow: '0 2px 8px var(--accent-primary-glow), 0 1px 2px rgba(0,0,0,0.2)',
+            }}
           >
             =
           </button>
+
+          {/* Row 5: 0 . */}
           <button 
             onClick={() => handleInput('0')}
-            className="w-full h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors col-span-2"
+            className={`${numBtn} w-full h-[52px] col-span-2`}
+            style={{ 
+              background: 'rgba(255,255,255,0.03)',
+              color: 'var(--text-primary)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+            }}
           >
             0
           </button>
           <button 
             onClick={() => handleInput('.')}
-            className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
+            className={`${numBtn} w-full h-[52px]`}
+            style={{ 
+              background: 'rgba(255,255,255,0.03)',
+              color: 'var(--text-primary)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+            }}
           >
             .
           </button>
