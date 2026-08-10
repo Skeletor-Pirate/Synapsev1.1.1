@@ -12,7 +12,10 @@ import { answerWithRAGClient } from "@/lib/rag-client";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 
-const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider) || 'gemini';
+// Orchestrator ALWAYS uses Gemini since it relies on Gemini-specific APIs
+// (FunctionDeclaration, chats.create, ThinkingLevel, googleSearch tool).
+// The generic AIProvider toggle only applies to simpler generateContent calls.
+const provider: AIProvider = 'gemini';
 
 const ledgerBalanceTool: FunctionDeclaration = {
   name: "get_ledger_balance",

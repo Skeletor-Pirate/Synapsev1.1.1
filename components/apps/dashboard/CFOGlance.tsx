@@ -1,12 +1,14 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { TrendingUp, DollarSign, Bell } from 'lucide-react';
 
 export default function CFOGlance() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+      animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
       className="p-4 rounded-2xl border border-white/10 shadow-lg backdrop-blur-xl bg-black/40"
       style={{ boxShadow: 'var(--glass-premium)' }}
     >

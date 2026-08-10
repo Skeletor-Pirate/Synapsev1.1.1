@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Inbox, 
   Send, 
@@ -19,9 +19,11 @@ import {
   Maximize2,
   Minimize2,
   CornerUpLeft,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { sendEmailAction } from '@/app/actions/mail';
+import { sortAndSummarizeMails } from '@/app/actions/mail-ai';
 
 // Mock Data
 const MOCK_EMAILS = [
@@ -81,7 +83,19 @@ export default function Mail() {
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   const [search, setSearch] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<any | null>(null);
-  const [emails, setEmails] = useState(MOCK_EMAILS);
+  const [isSorting, setIsSorting] = useState(false);
+  
+  const [emails, setEmails] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('synapse-mail-data');
+      if (saved) return JSON.parse(saved);
+    }
+    return MOCK_EMAILS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('synapse-mail-data', JSON.stringify(emails));
+  }, [emails]);
   
   // Compose state
   const [isComposing, setIsComposing] = useState(false);
@@ -109,12 +123,10 @@ export default function Mail() {
     
     setIsSending(true);
     
-    // Call Resend Server Action
-    const result = await sendEmailAction(composeTo, composeSubject, composeBody);
-    
-    setIsSending(false);
-    
-    if (result.success) {
+    try {
+      const result = await sendEmailAction(composeTo, composeSubject, composeBody);
+      
+      // Always save locally to Sent folder
       const newEmail = {
         id: Date.now(),
         folder: 'sent',
@@ -126,6 +138,8 @@ export default function Mail() {
         date: 'Just now',
         unread: false,
         starred: false,
+        deliveryStatus: result.success ? 'delivered' : 'pending',
+        to: composeTo,
       };
       
       setEmails([newEmail, ...emails]);
@@ -133,8 +147,74 @@ export default function Mail() {
       setComposeTo('');
       setComposeSubject('');
       setComposeBody('');
-    } else {
-      alert(`Failed to send email: ${result.error}`);
+
+      if (!result.success) {
+        // Show a non-blocking notification instead of an alert
+        console.warn('Email delivery note:', result.error);
+        alert(`Email saved to Sent folder.\n\n⚠️ External delivery note: ${result.error}`);
+      }
+    } catch (error) {
+      // Still save locally even on total failure
+      const newEmail = {
+        id: Date.now(),
+        folder: 'sent',
+        sender: 'Me',
+        email: 'admin@synapsecfo.com',
+        subject: composeSubject,
+        snippet: composeBody.substring(0, 100),
+        content: composeBody,
+        date: 'Just now',
+        unread: false,
+        starred: false,
+        deliveryStatus: 'failed',
+        to: composeTo,
+      };
+      setEmails([newEmail, ...emails]);
+      setIsComposing(false);
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+      alert('Email saved locally. External delivery failed — verify your domain at resend.com/domains to send to external addresses.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleAISort = async () => {
+    if (emails.length === 0) return;
+    setIsSorting(true);
+    try {
+      const res = await sortAndSummarizeMails(emails);
+      if (res.success && Array.isArray(res.data)) {
+        const updatedEmails = emails.map(email => {
+          const aiData = res.data.find((d: any) => d.id === email.id);
+          if (aiData) {
+            return {
+              ...email,
+              aiPriority: aiData.priority,
+              aiSummary: aiData.summary
+            };
+          }
+          return email;
+        });
+        
+        // Sort by priority: High > Medium > Low > undefined
+        const priorityScore: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        updatedEmails.sort((a, b) => {
+          const scoreA = priorityScore[a.aiPriority] || 0;
+          const scoreB = priorityScore[b.aiPriority] || 0;
+          return scoreB - scoreA;
+        });
+
+        setEmails(updatedEmails);
+      } else {
+        alert('AI Sorting failed: ' + (res.error || 'Invalid response format.'));
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error during AI sorting.');
+    } finally {
+      setIsSorting(false);
     }
   };
 
@@ -202,8 +282,8 @@ export default function Mail() {
         style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-1)' }}
       >
         {/* Search Header */}
-        <div className="p-4 border-b" style={{ borderColor: 'var(--glass-border)' }}>
-          <div className="relative">
+        <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: 'var(--glass-border)' }}>
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-ghost)' }} />
             <input 
               type="text" 
@@ -215,10 +295,23 @@ export default function Mail() {
                 background: 'var(--surface-3)', 
                 border: '1px solid var(--glass-border)',
                 color: 'var(--text-primary)',
-                '--tw-ring-color': 'var(--accent-primary)' 
-              } as React.CSSProperties}
+                outline: 'none'
+              }}
             />
           </div>
+          <button 
+            onClick={handleAISort}
+            disabled={isSorting}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+            style={{ 
+              background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-primary))',
+              color: 'white',
+              opacity: isSorting ? 0.7 : 1
+            }}
+          >
+            {isSorting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            AI Sort
+          </button>
         </div>
 
         {/* List */}
@@ -248,21 +341,36 @@ export default function Mail() {
                     >
                       {email.sender}
                     </span>
-                    <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--text-ghost)' }}>
+                    <span className="text-xs font-medium" style={{ color: email.unread ? 'var(--accent-primary)' : 'var(--text-ghost)' }}>
                       {email.date}
                     </span>
                   </div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 overflow-hidden">
-                      <p 
-                        className={`text-xs truncate mb-1 ${email.unread ? 'font-semibold' : 'font-medium'}`}
-                        style={{ color: email.unread ? 'var(--text-primary)' : 'var(--text-secondary)' }}
-                      >
+                      <div className="text-sm font-semibold mb-1 truncate" style={{ color: 'var(--text-primary)' }}>
                         {email.subject}
-                      </p>
-                      <p className="text-[11px] truncate" style={{ color: 'var(--text-ghost)' }}>
+                      </div>
+                      <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
                         {email.snippet}
-                      </p>
+                      </div>
+                      {email.aiSummary && (
+                        <div className="mt-2 p-2 rounded text-xs animate-fade-in" style={{ background: 'var(--surface-1)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Sparkles size={12} style={{ color: 'var(--accent-purple)' }} />
+                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                            {email.aiPriority && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold" 
+                                    style={{ 
+                                      background: email.aiPriority === 'High' ? 'var(--accent-danger-dim)' : email.aiPriority === 'Medium' ? 'var(--accent-warning-dim)' : 'var(--accent-success-dim)',
+                                      color: email.aiPriority === 'High' ? 'var(--accent-danger)' : email.aiPriority === 'Medium' ? 'var(--accent-warning)' : 'var(--accent-success)'
+                                    }}>
+                                {email.aiPriority}
+                              </span>
+                            )}
+                          </div>
+                          {email.aiSummary}
+                        </div>
+                      )}
                     </div>
                     <button 
                       onClick={(e) => toggleStar(e, email.id)}
@@ -320,7 +428,9 @@ export default function Mail() {
                         {selectedEmail.sender}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-ghost)' }}>
-                        to me &lt;{selectedEmail.email}&gt;
+                        {selectedEmail.folder === 'sent' 
+                          ? `to ${selectedEmail.to || selectedEmail.email} <${selectedEmail.to || selectedEmail.email}>` 
+                          : `to me <${selectedEmail.email}>`}
                       </p>
                     </div>
                   </div>

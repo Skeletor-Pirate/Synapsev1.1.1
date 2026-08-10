@@ -100,7 +100,7 @@ const ChartTooltipStyle = {
   padding: '10px 14px',
 };
 
-export default function Dashboard({ user, liveFeed }: { user: any, liveFeed: any[] }) {
+export default function Dashboard({ user, liveFeed = [] }: { user: any, liveFeed?: any[] }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedStock, setSelectedStock] = useState('AAPL');
   const [currency, setCurrency] = useState('INR');

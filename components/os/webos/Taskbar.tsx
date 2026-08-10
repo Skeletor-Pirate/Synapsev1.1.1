@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { LayoutGrid, Mic } from 'lucide-react';
 import { AppDefinition, AppId } from './AppRegistry';
 
 interface TaskbarProps {
@@ -14,106 +15,6 @@ interface TaskbarProps {
   apps: AppDefinition[];
 }
 
-/* ── Single Dock Item with magnification ── */
-function DockItem({ 
-  app, 
-  isOpen, 
-  isActive, 
-  isMinimized, 
-  mouseX, 
-  onClick 
-}: { 
-  app: AppDefinition; 
-  isOpen: boolean; 
-  isActive: boolean; 
-  isMinimized: boolean; 
-  mouseX: any;
-  onClick: () => void; 
-}) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isBouncing, setIsBouncing] = useState(false);
-
-  const distance = useTransform(mouseX, (val: number) => {
-    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
-    return val - bounds.x - bounds.width / 2;
-  });
-
-  const widthSync = useTransform(distance, [-120, 0, 120], [44, 56, 44]);
-  const width = useSpring(widthSync, { mass: 0.1, stiffness: 200, damping: 15 });
-
-  const handleClick = useCallback(() => {
-    if (!isOpen) {
-      setIsBouncing(true);
-      setTimeout(() => setIsBouncing(false), 500);
-    }
-    onClick();
-  }, [isOpen, onClick]);
-
-  return (
-    <motion.button
-      ref={ref}
-      onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ width, height: width }}
-      className="relative flex items-center justify-center rounded-[12px] transition-colors duration-150"
-    >
-      {/* Icon container */}
-      <motion.div
-        className={`w-full h-full rounded-[12px] ${app.color} flex items-center justify-center relative`}
-        style={{
-          boxShadow: isActive 
-            ? '0 4px 16px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1) inset' 
-            : '0 2px 8px rgba(0,0,0,0.2)',
-          filter: isMinimized ? 'brightness(0.5) saturate(0.5)' : 'none',
-        }}
-        animate={isBouncing ? {
-          y: [0, -16, -4, -10, 0],
-          transition: { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }
-        } : { y: 0 }}
-      >
-        <app.icon size={20} className="text-white drop-shadow-sm" />
-      </motion.div>
-
-      {/* Running indicator dot */}
-      {isOpen && (
-        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-          <div 
-            className="rounded-full transition-all duration-300"
-            style={{
-              width: isActive ? 5 : 3,
-              height: isActive ? 5 : 3,
-              background: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: isActive ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Tooltip */}
-      <AnimatePresence>
-        {isHovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
-            className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md whitespace-nowrap pointer-events-none"
-            style={{
-              background: 'var(--surface-4)',
-              border: '1px solid var(--glass-border)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            }}
-          >
-            <span className="text-[10px] font-semibold" style={{ color: 'var(--text-primary)' }}>{app.name}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.button>
-  );
-}
-
 export default function Taskbar({ 
   openApps, 
   activeApp, 
@@ -123,66 +24,130 @@ export default function Taskbar({
   isStartOpen,
   apps 
 }: TaskbarProps) {
-  const pinnedApps: AppId[] = ['dashboard', 'calculator', 'calendar', 'notes'];
-  const taskbarApps = Array.from(new Set([...pinnedApps, ...openApps]));
-  const mouseX = useMotionValue(Infinity);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const pinnedApps: AppId[] = [
+    'dashboard', 
+    'spendsense', 
+    'predictivear', 
+    'fpnastudio', 
+    'taxpilot', 
+    'vendoriq', 
+    'investiq', 
+    'explorer', 
+    'terminal', 
+    'calculator', 
+    'calendar', 
+    'notes', 
+    'music',
+    'aibrain',
+    'settings'
+  ];
+
+  const dockApps = Array.from(new Set([...pinnedApps, ...openApps]));
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-16 flex items-center justify-center px-4 z-[100] pointer-events-none">
+    <div className="fixed bottom-2 sm:bottom-4 left-0 right-0 h-20 sm:h-24 flex items-end justify-center px-2 sm:px-4 z-[160] pointer-events-none max-w-full">
       <motion.div 
-        onMouseMove={(e) => mouseX.set(e.pageX)}
-        onMouseLeave={() => mouseX.set(Infinity)}
-        className="flex items-end gap-1.5 px-2.5 py-2 rounded-2xl pointer-events-auto mb-1.5"
-        style={{
-          background: 'rgba(8, 8, 16, 0.72)',
-          backdropFilter: 'blur(40px) saturate(1.3)',
-          WebkitBackdropFilter: 'blur(40px) saturate(1.3)',
-          border: '1px solid var(--glass-border)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.04) inset',
-        }}
+        className="macos-glass px-2.5 sm:px-4 py-2 sm:py-3 rounded-3xl flex items-center gap-2 sm:gap-3.5 shadow-[0_30px_70px_rgba(0,0,0,0.85)] pointer-events-auto border-2 border-white/25 relative max-w-[98vw] overflow-x-auto no-scrollbar"
+        initial={{ y: 60, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 220 }}
       >
-        {/* Start Button */}
-        <motion.button 
+        {/* Launchpad Button */}
+        <div
+          className="relative group flex flex-col items-center cursor-pointer shrink-0"
           onClick={onStartClick}
-          whileTap={{ scale: 0.9 }}
-          className="w-11 h-11 flex items-center justify-center rounded-[11px] transition-all duration-200"
-          style={{
-            background: isStartOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
-          }}
-          onMouseEnter={e => { if (!isStartOpen) (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-          onMouseLeave={e => { if (!isStartOpen) (e.target as HTMLElement).style.background = 'transparent'; }}
         >
-          {/* Synapse mini logo */}
-          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-            <circle cx="12" cy="5" r="2" fill="#3B82F6" />
-            <circle cx="5" cy="16" r="2" fill="#8B5CF6" />
-            <circle cx="19" cy="16" r="2" fill="#06B6D4" />
-            <line x1="12" y1="5" x2="5" y2="16" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-            <line x1="12" y1="5" x2="19" y2="16" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-            <line x1="5" y1="16" x2="19" y2="16" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-          </svg>
-        </motion.button>
+          <div className="relative flex flex-col items-center">
+            <button 
+              className={`w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center rounded-2xl transition-all duration-300 border-2 ${
+                isStartOpen 
+                  ? 'bg-cyan-500/30 border-cyan-400 scale-105 shadow-lg shadow-cyan-500/40' 
+                  : 'bg-white/10 border-white/20 hover:bg-white/25 hover:scale-105 hover:border-white/40'
+              }`}
+            >
+              <LayoutGrid size={22} className="text-white drop-shadow-md" />
+            </button>
+          </div>
 
-        {/* Separator */}
-        <div className="w-px h-7 mx-1 self-center" style={{ background: 'var(--glass-border)' }} />
+          <div className="hidden md:block absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl text-xs font-black text-white uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none shadow-2xl z-50">
+            LAUNCHPAD
+          </div>
+        </div>
 
-        {/* Dock Items */}
-        {taskbarApps.map((appId) => {
-          const app = apps.find(a => a.id === appId);
-          if (!app) return null;
+        <div className="w-0.5 h-7 sm:h-8 bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
 
-          return (
-            <DockItem
-              key={appId}
-              app={app}
-              isOpen={openApps.includes(appId)}
-              isActive={activeApp === appId}
-              isMinimized={minimizedApps.includes(appId)}
-              mouseX={mouseX}
-              onClick={() => onAppClick(appId)}
-            />
-          );
-        })}
+        {/* Dock Icons Container */}
+        <div className="flex items-center gap-2 sm:gap-3.5">
+          {dockApps.map((appId, idx) => {
+            const app = apps.find(a => a.id === appId);
+            if (!app) return null;
+
+            const isOpen = openApps.includes(appId);
+            const isActive = activeApp === appId;
+            const isMinimized = minimizedApps.includes(appId);
+
+            let scale = 1;
+            if (hoveredIndex !== null) {
+              const distance = Math.abs(hoveredIndex - idx);
+              if (distance === 0) scale = 1.22;
+              else if (distance === 1) scale = 1.1;
+            }
+
+            return (
+              <div
+                key={appId}
+                className="relative group flex flex-col items-center cursor-pointer pb-2 shrink-0"
+                onMouseEnter={() => setHoveredIndex(idx)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                onClick={() => onAppClick(appId)}
+              >
+                <motion.div
+                  animate={{ scale }}
+                  transition={{ type: 'spring', damping: 18, stiffness: 320 }}
+                  className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${app.color} flex items-center justify-center border-2 border-white/30 shadow-2xl transition-colors ${
+                    isActive ? 'ring-4 ring-cyan-300 shadow-cyan-500/50' : 'hover:border-white/50'
+                  } ${isMinimized ? 'opacity-50' : 'opacity-100'}`}
+                >
+                  <app.icon size={22} className="text-white drop-shadow-md sm:size-[26px]" />
+                </motion.div>
+                
+                {isOpen && (
+                  <div 
+                    className={`absolute bottom-0 w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                      isActive ? 'bg-cyan-300 shadow-[0_0_12px_#67e8f9]' : 'bg-white/70'
+                    }`} 
+                  />
+                )}
+
+                <div className="hidden md:block absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl text-xs font-black text-white uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none shadow-2xl z-50">
+                  {app.name.toUpperCase()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="w-0.5 h-7 sm:h-8 bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
+
+        {/* Voice AI Dock Button */}
+        <div
+          className="relative group flex flex-col items-center cursor-pointer shrink-0"
+          onClick={() => onAppClick('voice')}
+        >
+          <div className="relative flex flex-col items-center">
+            <button 
+              className="w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 border-2 border-cyan-300 shadow-lg shadow-cyan-500/40 hover:scale-105 transition-transform duration-200"
+            >
+              <Mic size={22} className="text-white animate-pulse sm:size-[26px]" />
+            </button>
+          </div>
+          
+          <div className="hidden md:block absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl text-xs font-black text-white uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none shadow-2xl z-50">
+            SYNAPSE VOICE
+          </div>
+        </div>
       </motion.div>
     </div>
   );

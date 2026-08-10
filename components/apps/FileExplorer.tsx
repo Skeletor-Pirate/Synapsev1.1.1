@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { Folder, File, ChevronRight, Search, Grid, List, Plus, FileText, Trash2 } from 'lucide-react';
-import { OSFile } from '@/hooks/useFileSystem';
+import { OSFile, useFileSystem } from '@/hooks/useFileSystem';
 
-export default function FileExplorer({ fileSystem }: { fileSystem: any }) {
+export default function FileExplorer() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { files, addFile, deleteFile } = fileSystem;
+  const { files, addFile, deleteFile } = useFileSystem();
 
   const currentFiles = files.filter((f: OSFile) => 
     f.parentId === currentFolder && 

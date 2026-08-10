@@ -8,7 +8,7 @@ export const getAIClient = (provider: AIProvider = 'gemini') => {
   switch (provider) {
     case 'openai':
       return new OpenAI({
-        apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+        apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
         baseURL: 'https://openrouter.ai/api/v1',
         dangerouslyAllowBrowser: true,
       });

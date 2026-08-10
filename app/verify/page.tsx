@@ -56,7 +56,7 @@ function VerifyContent() {
         }
 
         const invitationData = invitationSnap.data();
-        
+
         // Check if the logged in user's email matches the invitation email
         if (invitationData.email.toLowerCase() !== user?.email?.toLowerCase()) {
           setStatus('error');
@@ -71,30 +71,29 @@ function VerifyContent() {
         }
 
         await updateDoc(invitationRef, { status: 'active' });
-        
-        // Update the user's profile with the orgId from the invitation
-        const userDocRef = doc(db, 'users', user.uid);
+
+        // Ensure user instance is defined here safely (user is guaranteed by user check in useEffect deps)
+        const currentUser = user;
+
+        const userDocRef = doc(db, 'users', currentUser.uid);
         const userDoc = await getDoc(userDocRef);
-        
+
         if (userDoc.exists()) {
           await updateDoc(userDocRef, { orgId: invitationData.orgId });
         } else {
-          // If profile doesn't exist yet, create it
           await setDoc(userDocRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || user.email?.split('@')[0] || 'User',
-            role: 'editor', // Invited users are editors by default
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+            role: 'editor',
             orgId: invitationData.orgId,
             createdAt: new Date().toISOString()
           });
-          // Seed initial data for the organization if it's new? 
-          // Usually invitations are to existing orgs, so seeding might not be needed.
         }
-        
+
         setStatus('success');
         setMessage('Your email has been verified! Redirecting to Synapse OS...');
-        
+
         setTimeout(() => {
           router.push('/');
         }, 3000);
@@ -119,13 +118,13 @@ function VerifyContent() {
             <div className="w-3 h-3 bg-rose-500 rounded-sm" />
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-black tracking-tighter mb-2">Verify Invitation</h1>
-        
+
         {status === 'unauthenticated' && (
           <div className="space-y-6">
             <p className="text-zinc-400 text-sm">Please sign in with your Google account to verify your invitation.</p>
-            <button 
+            <button
               onClick={handleSignIn}
               className="w-full py-4 bg-white text-black rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-95"
             >
@@ -156,7 +155,7 @@ function VerifyContent() {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </div>
             <p className="text-rose-500 font-medium text-sm">{message}</p>
-            <button 
+            <button
               onClick={() => router.push('/')}
               className="text-zinc-500 hover:text-white text-xs font-bold uppercase tracking-widest mt-4"
             >
