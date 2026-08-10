@@ -10,7 +10,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ingestDocument } from '@/app/actions/knowledge';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY as string });
+const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'MISSING_API_KEY' });
 
 const openAppTool: FunctionDeclaration = {
   name: "open_app",
