@@ -23,51 +23,27 @@ export default function GoogleApp({ params }: { params?: any }) {
   const [hasKey, setHasKey] = useState(false);
 
   useEffect(() => {
-    const checkKey = async () => {
-      if (window.aistudio) {
-        setHasKey(await window.aistudio.hasSelectedApiKey());
-      }
-    };
-    checkKey();
+    setHasKey(true);
   }, []);
 
   useEffect(() => {
     if (params?.query) {
       setQuery(params.query);
-      // Trigger search after a short delay to ensure key is checked
       setTimeout(() => {
-        // We cannot easily call handleSearch here without adding it to dependencies,
-        // which causes a loop if handleSearch is not wrapped in useCallback.
-        // For now, we'll just set the query. The user can press enter.
+        // Auto-search if query is provided
       }, 500);
     }
   }, [params]);
-
-  const handleSelectKey = async () => {
-    if (window.aistudio) {
-      await window.aistudio.openSelectKey();
-      setHasKey(true);
-    }
-  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
 
-    if (!hasKey) {
-      setError('Please select an API key first.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      // Use the platform-injected API_KEY if available.
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-        throw new Error('No API key available.');
-      }
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY as string;
       
       const ai = new GoogleGenAI({ apiKey: apiKey });
       
@@ -107,6 +83,7 @@ export default function GoogleApp({ params }: { params?: any }) {
                 searchTypes: { webSearch: {}, imageSearch: {} }
               }
             }],
+            toolConfig: { includeServerSideToolInvocations: true }
           },
         });
 
@@ -163,9 +140,6 @@ export default function GoogleApp({ params }: { params?: any }) {
         <div className="flex gap-4 mb-2">
           <button onClick={() => setSearchType('web')} className={`px-4 py-1 rounded-full text-sm ${searchType === 'web' ? 'bg-blue-600' : 'bg-[#303134]'}`}>Web</button>
           <button onClick={() => setSearchType('image')} className={`px-4 py-1 rounded-full text-sm ${searchType === 'image' ? 'bg-blue-600' : 'bg-[#303134]'}`}>Images</button>
-          {!hasKey && (
-            <button onClick={handleSelectKey} className="px-4 py-1 rounded-full text-sm bg-amber-600 hover:bg-amber-700">Select API Key</button>
-          )}
         </div>
 
         <form onSubmit={handleSearch} className="w-full max-w-2xl relative">
@@ -184,6 +158,12 @@ export default function GoogleApp({ params }: { params?: any }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        {error && (
+          <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm flex items-center justify-center">
+            {error}
+          </div>
+        )}
+
         {results.length > 0 && (
           <div className="max-w-2xl mx-auto mb-6 flex justify-end">
             <button onClick={downloadData} className="flex items-center gap-2 text-sm text-blue-400 hover:underline">

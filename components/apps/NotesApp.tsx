@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, FileText, Trash2, Edit3 } from 'lucide-react';
-import { OSFile } from '@/hooks/useFileSystem';
+import { useFileSystem, OSFile } from '@/hooks/useFileSystem';
 
-export default function NotesApp({ fileSystem }: { fileSystem: any }) {
-  const { files, addFile, updateFile, deleteFile } = fileSystem;
+export default function NotesApp({ params }: { params?: any }) {
+  const { files, addFile, updateFile, deleteFile } = useFileSystem();
   const notes = files.filter((f: OSFile) => f.type === 'note');
   
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getStockPrice } from '@/app/actions/stocks';
 import { 
   ArrowUpRight, 
@@ -82,7 +82,25 @@ const stockData = {
 
 const STOCKS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA'];
 
-export default function Dashboard({ user, liveFeed }: { user: any, liveFeed: any[] }) {
+/* ── Animated Counter ── */
+function AnimatedValue({ value, prefix = '' }: { value: string; prefix?: string }) {
+  return (
+    <span className="inline-block animate-number" style={{ fontVariantNumeric: 'tabular-nums' }}>
+      {prefix}{value}
+    </span>
+  );
+}
+
+/* ── Custom Tooltip for charts ── */
+const ChartTooltipStyle = {
+  backgroundColor: 'var(--surface-2)',
+  border: '1px solid var(--glass-border)',
+  borderRadius: '12px',
+  boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+  padding: '10px 14px',
+};
+
+export default function Dashboard({ user, liveFeed = [] }: { user: any, liveFeed?: any[] }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedStock, setSelectedStock] = useState('AAPL');
   const [currency, setCurrency] = useState('INR');
@@ -128,200 +146,332 @@ export default function Dashboard({ user, liveFeed }: { user: any, liveFeed: any
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter">FinRAG Pro</h2>
-          <p className="text-zinc-500 text-sm font-medium">Real-time financial intelligence for your organization.</p>
+          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            FinRAG Pro
+          </h2>
+          <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+            Real-time financial intelligence for your organization.
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="px-4 py-2 bg-zinc-900 rounded-lg text-sm font-medium border border-zinc-800 hover:bg-zinc-800 transition-colors">Export Report</button>
+          <button 
+            onClick={() => window.print()} 
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 hover:bg-white/[0.06] active:scale-95"
+            style={{ border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}
+          >
+            Export Report
+          </button>
           {user?.role !== 'viewer' && (
-            <button onClick={() => alert('New Transaction modal would open here')} className="px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-zinc-200 transition-colors">New Transaction</button>
+            <button 
+              onClick={() => alert('New Transaction modal would open here')} 
+              className="px-3.5 py-2 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95"
+              style={{ 
+                background: 'var(--accent-primary)', 
+                color: 'white',
+                boxShadow: '0 2px 8px var(--accent-primary-glow)',
+              }}
+            >
+              New Transaction
+            </button>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-2 border-b border-zinc-800 pb-px overflow-x-auto custom-scrollbar">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
-                isActive 
-                  ? 'bg-zinc-900 border-t border-l border-r border-zinc-800 text-emerald-400' 
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-              }`}
-            >
-              <Icon className={`w-4 h-4 mr-2 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* ── Tab Bar with sliding indicator ── */}
+      <div className="relative">
+        <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-px">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 whitespace-nowrap relative"
+                style={{
+                  background: isActive ? 'var(--surface-3)' : 'transparent',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-tertiary)',
+                  border: isActive ? '1px solid var(--glass-border)' : '1px solid transparent',
+                }}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="h-px mt-2" style={{ background: 'var(--glass-border)' }} />
       </div>
 
       {activeTab === 'overview' && (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          {/* Financial Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'EBITDA', value: '₹2.4Cr', icon: TrendingUp },
-          { label: 'Last Year Revenue', value: '₹12.8Cr', icon: DollarSign },
-          { label: 'Current Employees', value: '142', icon: Users },
-          { label: 'Active Projects', value: '12', icon: Briefcase },
-        ].map((stat, i) => (
-          <div key={i} className="bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-colors shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-            <div className="flex items-center gap-3 mb-2">
-              <stat.icon size={16} className="text-zinc-500" />
-              <p className="text-zinc-500 text-sm font-medium">{stat.label}</p>
-            </div>
-            <h3 className="text-3xl font-bold tracking-tight">{stat.value}</h3>
+        <div className="space-y-6 animate-fade-in">
+          {/* ── Metric Cards ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'EBITDA', value: '₹2.4Cr', icon: TrendingUp, change: '+12.3%', positive: true },
+              { label: 'Last Year Revenue', value: '₹12.8Cr', icon: DollarSign, change: '+8.7%', positive: true },
+              { label: 'Current Employees', value: '142', icon: Users, change: '+4', positive: true },
+              { label: 'Active Projects', value: '12', icon: Briefcase, change: '-2', positive: false },
+            ].map((stat, i) => (
+              <div 
+                key={i} 
+                className="p-5 rounded-xl transition-all duration-200 hover:translate-y-[-1px] group"
+                style={{ 
+                  background: 'var(--surface-2)', 
+                  border: '1px solid var(--glass-border)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <stat.icon size={14} style={{ color: 'var(--text-ghost)' }} />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-ghost)' }}>
+                      {stat.label}
+                    </p>
+                  </div>
+                  <span 
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ 
+                      color: stat.positive ? 'var(--accent-success)' : 'var(--accent-danger)',
+                      background: stat.positive ? 'var(--accent-success-dim)' : 'var(--accent-danger-dim)',
+                    }}
+                  >
+                    {stat.change}
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  <AnimatedValue value={stat.value} />
+                </h3>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Charts & Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Spend Analysis Chart */}
-        <div className="lg:col-span-2 bg-black/20 backdrop-blur-md p-8 rounded-3xl border border-white/5 h-[400px] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold">Spend Analysis</h3>
-            <div className="flex gap-2">
-              <select 
-                className="bg-zinc-900 text-xs p-2 rounded border border-zinc-800"
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-              >
-                <option value="1M">1 Month</option>
-                <option value="3M">3 Months</option>
-                <option value="6M">6 Months</option>
-              </select>
-              <select 
-                className="bg-zinc-900 text-xs p-2 rounded border border-zinc-800"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="All">All Categories</option>
-                <option value="Software">Software</option>
-                <option value="Travel">Travel</option>
-                <option value="Marketing">Marketing</option>
-              </select>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height="80%">
-            <BarChart data={filteredSpendData}>
-              <defs>
-                <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
-              <XAxis dataKey="month" stroke="#525252" fontSize={11} tickLine={false} axisLine={false} dy={10} fontFamily="var(--font-mono)" />
-              <YAxis stroke="#525252" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} fontFamily="var(--font-mono)" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
-                itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#10b981' }}
-                labelStyle={{ color: '#71717a', marginBottom: '8px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
-                formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Spend']}
-              />
-              <Bar dataKey="spend" fill="url(#colorSpend)" radius={[4, 4, 0, 0]} />
-              <Brush dataKey="month" height={30} stroke="#525252" fill="#09090b" tickFormatter={() => ''} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Stock Analysis & Currency */}
-        <div className="space-y-6">
-          <div className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold">Live Stock Analysis</h3>
-              <select 
-                className="bg-zinc-900 text-xs p-1 rounded border border-zinc-800"
-                value={selectedStock}
-                onChange={(e) => setSelectedStock(e.target.value)}
-              >
-                {STOCKS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            
-            {stockPrices[selectedStock] ? (
-              <div className="mb-4">
-                <div className="text-3xl font-bold">${stockPrices[selectedStock].price.toFixed(2)}</div>
-                <div className={`text-sm font-medium ${stockPrices[selectedStock].change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {stockPrices[selectedStock].change >= 0 ? '+' : ''}{stockPrices[selectedStock].change.toFixed(2)}%
+          {/* ── Charts ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Spend Analysis */}
+            <div 
+              className="lg:col-span-2 p-6 rounded-xl h-[380px]"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
+            >
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Spend Analysis</h3>
+                <div className="flex gap-2">
+                  <select 
+                    className="text-[10px] font-semibold px-2 py-1 rounded-md border-none outline-none"
+                    style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                    value={timeframe}
+                    onChange={(e) => setTimeframe(e.target.value)}
+                  >
+                    <option value="1M">1 Month</option>
+                    <option value="3M">3 Months</option>
+                    <option value="6M">6 Months</option>
+                  </select>
+                  <select 
+                    className="text-[10px] font-semibold px-2 py-1 rounded-md border-none outline-none"
+                    style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Cloud">Cloud</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Payroll">Payroll</option>
+                  </select>
                 </div>
               </div>
-            ) : (
-              <div className="mb-4 text-sm text-zinc-500">Loading live data...</div>
-            )}
-
-            <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stockData[selectedStock as keyof typeof stockData] || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
-                  <XAxis dataKey="time" stroke="#525252" fontSize={10} tickLine={false} axisLine={false} dy={5} fontFamily="var(--font-mono)" />
-                  <YAxis domain={['auto', 'auto']} stroke="#525252" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} fontFamily="var(--font-mono)" width={40} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#6366f1' }}
-                    labelStyle={{ color: '#71717a', marginBottom: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Price']}
+              <ResponsiveContainer width="100%" height="82%">
+                <BarChart data={filteredSpendData}>
+                  <defs>
+                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.2}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="transparent" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    dy={8} 
+                    tick={{ fill: 'var(--text-ghost)', fontWeight: 500 }}
                   />
-                  <Line type="monotone" dataKey="price" stroke="#6366f1" strokeWidth={3} dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }} />
-                </LineChart>
+                  <YAxis 
+                    stroke="transparent" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={(v) => `₹${v}`}
+                    tick={{ fill: 'var(--text-ghost)', fontWeight: 500 }}
+                  />
+                  <Tooltip 
+                    contentStyle={ChartTooltipStyle}
+                    itemStyle={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-primary)' }}
+                    labelStyle={{ color: 'var(--text-ghost)', marginBottom: '4px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase' as const }}
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Spend']}
+                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                  />
+                  <Bar dataKey="spend" fill="url(#colorSpend)" radius={[6, 6, 0, 0]} />
+                  <Brush 
+                    dataKey="month" 
+                    height={24} 
+                    stroke="rgba(255,255,255,0.06)" 
+                    fill="var(--surface-1)" 
+                    tickFormatter={() => ''} 
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
 
-          <div className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-            <h3 className="font-bold mb-4">Currency Rates (Base: USD)</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(exchangeRates).map(([curr, rate]) => (
-                <div key={curr} className="text-xs text-zinc-400">
-                  {curr}: <span className="font-bold text-white">{rate.toFixed(2)}</span>
+            {/* Stock & Currency */}
+            <div className="space-y-4">
+              {/* Stock card */}
+              <div 
+                className="p-5 rounded-xl"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Live Stock</h3>
+                  <select 
+                    className="text-[10px] font-semibold px-2 py-1 rounded-md border-none outline-none"
+                    style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                    value={selectedStock}
+                    onChange={(e) => setSelectedStock(e.target.value)}
+                  >
+                    {STOCKS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+                
+                {stockPrices[selectedStock] ? (
+                  <div className="mb-4">
+                    <div className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                      ${stockPrices[selectedStock].price.toFixed(2)}
+                    </div>
+                    <div 
+                      className="text-xs font-semibold mt-0.5"
+                      style={{ color: stockPrices[selectedStock].change >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}
+                    >
+                      {stockPrices[selectedStock].change >= 0 ? '+' : ''}{stockPrices[selectedStock].change.toFixed(2)}%
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 text-xs animate-shimmer h-8 rounded" style={{ color: 'var(--text-ghost)' }}>
+                    Loading…
+                  </div>
+                )}
 
-      {/* Live Transaction Stream */}
-      <div className="bg-black/20 backdrop-blur-md p-8 rounded-3xl border border-white/5 h-[400px] flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-        <h3 className="text-lg font-bold mb-6">Live Transaction Stream</h3>
-        <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-          {liveFeed && liveFeed.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-zinc-600 italic">
-              Waiting for live data...
-            </div>
-          ) : (
-            liveFeed?.map((tx: any) => (
-              <div key={tx.id} className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800 hover:bg-zinc-900 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'inflow' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                    {tx.type === 'inflow' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">{tx.vendor || tx.category}</p>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{tx.status}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`text-sm font-bold ${tx.type === 'inflow' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {tx.type === 'inflow' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
-                  </p>
-                  <p className="text-[10px] text-zinc-600">{new Date(tx.timestamp).toLocaleTimeString()}</p>
+                <div className="h-28">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stockData[selectedStock as keyof typeof stockData] || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                      <XAxis dataKey="time" stroke="transparent" fontSize={9} tickLine={false} axisLine={false} dy={4} tick={{ fill: 'var(--text-ghost)' }} />
+                      <YAxis domain={['auto', 'auto']} stroke="transparent" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} width={36} tick={{ fill: 'var(--text-ghost)' }} />
+                      <Tooltip 
+                        contentStyle={ChartTooltipStyle}
+                        itemStyle={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-purple)' }}
+                        labelStyle={{ color: 'var(--text-ghost)', fontSize: '10px', fontWeight: 600 }}
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, 'Price']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="var(--accent-purple)" 
+                        strokeWidth={2} 
+                        dot={{ r: 2.5, fill: 'var(--accent-purple)', strokeWidth: 0 }} 
+                        activeDot={{ r: 4, fill: 'white', stroke: 'var(--accent-purple)', strokeWidth: 2 }} 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </div>
+
+              {/* Currency card */}
+              <div 
+                className="p-5 rounded-xl"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
+              >
+                <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Currency Rates</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  {Object.entries(exchangeRates).map(([curr, rate]) => (
+                    <div key={curr} className="flex items-center justify-between text-xs py-1">
+                      <span style={{ color: 'var(--text-ghost)' }}>{curr}</span>
+                      <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {rate.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Live Transaction Stream ── */}
+          <div 
+            className="p-6 rounded-xl h-[360px] flex flex-col"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Live Transaction Stream</h3>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full animate-breathe" style={{ background: 'var(--accent-success)' }} />
+                <span className="text-[10px] font-semibold" style={{ color: 'var(--accent-success)' }}>LIVE</span>
+              </div>
+            </div>
+            <div className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+              {liveFeed && liveFeed.length === 0 ? (
+                <div className="h-full flex items-center justify-center" style={{ color: 'var(--text-ghost)' }}>
+                  <p className="text-sm">Waiting for live data…</p>
+                </div>
+              ) : (
+                liveFeed?.map((tx: any) => (
+                  <div 
+                    key={tx.id} 
+                    className="flex items-center justify-between p-3.5 rounded-lg transition-colors duration-150 hover:bg-white/[0.02]"
+                    style={{ border: '1px solid var(--glass-border)' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ 
+                          background: tx.type === 'inflow' ? 'var(--accent-success-dim)' : 'var(--accent-danger-dim)',
+                          color: tx.type === 'inflow' ? 'var(--accent-success)' : 'var(--accent-danger)',
+                        }}
+                      >
+                        {tx.type === 'inflow' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          {tx.vendor || tx.category}
+                        </p>
+                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-ghost)' }}>
+                          {tx.status}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p 
+                        className="text-xs font-bold tabular-nums"
+                        style={{ 
+                          color: tx.type === 'inflow' ? 'var(--accent-success)' : 'var(--accent-danger)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {tx.type === 'inflow' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[10px]" style={{ color: 'var(--text-ghost)' }}>
+                        {new Date(tx.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
 

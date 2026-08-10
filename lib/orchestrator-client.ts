@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration, ThinkingLevel, GenerateContentResponse } from "@google/genai";
-import { getAIClient, AIProvider } from "@/lib/ai-client";
+import { getAIClient, AIProvider, generateContent } from "@/lib/ai-client";
 import { 
   get_ledger_balance, 
   query_tax_code, 
@@ -12,7 +12,10 @@ import { answerWithRAGClient } from "@/lib/rag-client";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 
-const provider: AIProvider = (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider) || 'gemini';
+// Orchestrator ALWAYS uses Gemini since it relies on Gemini-specific APIs
+// (FunctionDeclaration, chats.create, ThinkingLevel, googleSearch tool).
+// The generic AIProvider toggle only applies to simpler generateContent calls.
+const provider: AIProvider = 'gemini';
 
 const ledgerBalanceTool: FunctionDeclaration = {
   name: "get_ledger_balance",
